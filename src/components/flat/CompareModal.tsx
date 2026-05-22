@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import type { Flat } from "@/lib/types";
-import { FLAT_TYPE_LABELS, STATUS_LABELS } from "@/lib/types";
+import { FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { X, Check, Minus } from "lucide-react";
+import { X, Check } from "lucide-react";
 
 interface Props {
   flats: Flat[];
@@ -38,160 +39,127 @@ const ROWS: RowDef[] = [
   { label: "Status", get: (f) => f.status },
 ];
 
+function getBestIdx(row: RowDef, flats: Flat[]): number | null {
+  if (!row.best) return null;
+  const vals = flats.map((f) => {
+    const v = row.get(f);
+    return typeof v === "number" ? v : null;
+  });
+  const filtered = vals.map((v, i) => ({ v, i })).filter((x) => x.v !== null) as { v: number; i: number }[];
+  if (filtered.length < 2) return null;
+  return row.best === "max"
+    ? filtered.reduce((a, b) => (a.v > b.v ? a : b)).i
+    : filtered.reduce((a, b) => (a.v < b.v ? a : b)).i;
+}
+
 export default function CompareModal({ flats, projectName, onClose }: Props) {
-  // For numeric rows, find best value
-  const getBestIdx = (row: RowDef): number | null => {
-    if (!row.best) return null;
-    const vals = flats.map((f) => {
-      const v = row.get(f);
-      return typeof v === "number" ? v : null;
-    });
-    if (vals.every((v) => v === null)) return null;
-    const filtered = vals.map((v, i) => ({ v, i })).filter((x) => x.v !== null) as { v: number; i: number }[];
-    if (filtered.length === 0) return null;
-    return row.best === "max"
-      ? filtered.reduce((a, b) => (a.v > b.v ? a : b)).i
-      : filtered.reduce((a, b) => (a.v < b.v ? a : b)).i;
-  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden rounded-2xl"
-        style={{ background: "#ffffff", boxShadow: "rgba(0,0,0,0.5) 0px 24px 80px 0px" }}
+        className="w-full max-w-4xl flex flex-col overflow-hidden"
+        style={{
+          maxHeight: "92vh",
+          background: "#ffffff",
+          boxShadow: "rgba(0,0,0,0.5) 0px 24px 80px 0px",
+          borderRadius: "20px 20px 0 0",
+        }}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
-          style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}
-        >
+        <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
           <div>
-            <h2 style={{ fontWeight: 700, fontSize: 18, color: "#1d1d1f", letterSpacing: "-0.02em" }}>
-              Compare Flats
-            </h2>
-            <p className="text-micro" style={{ color: "rgba(0,0,0,0.45)", marginTop: 2 }}>{projectName}</p>
+            <h2 style={{ fontWeight: 700, fontSize: 18, color: "#1d1d1f", letterSpacing: "-0.02em" }}>Compare Flats</h2>
+            <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.45)", marginTop: 2 }}>{projectName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-standard transition-colors"
-            style={{ color: "rgba(0,0,0,0.4)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#f5f5f7")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-          >
+          <button onClick={onClose} style={{ padding: 8, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "rgba(0,0,0,0.4)" }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Table */}
+        {/* Mobile: vertical cards | Desktop: table */}
         <div className="overflow-auto flex-1">
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+
+          {/* Mobile card layout (hidden on sm+) */}
+          <div className="sm:hidden p-4 space-y-4">
+            {flats.map((flat, fi) => (
+              <div key={flat.id} className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.1)" }}>
+                <div className="flex items-center justify-between px-4 py-3" style={{ background: "#f5f5f7", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: "#1d1d1f" }}>Flat {flat.flat_number}</span>
+                  <StatusBadge status={flat.status} size="sm" />
+                </div>
+                <div className="divide-y" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+                  {ROWS.filter(r => r.label !== "Status").map((row) => {
+                    const bestIdx = getBestIdx(row, flats);
+                    const isBest = bestIdx === fi;
+                    const raw = row.get(flat);
+                    const display = row.format ? row.format(raw) : raw != null ? String(raw) : "—";
+                    return (
+                      <div key={row.label} className="flex items-center justify-between px-4 py-2.5" style={{ background: isBest ? "rgba(52,199,89,0.04)" : "#fff" }}>
+                        <span style={{ fontSize: 13, color: "rgba(0,0,0,0.55)" }}>{row.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          {isBest && flats.length > 1 && (
+                            <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "rgba(52,199,89,0.15)" }}>
+                              <Check className="w-2.5 h-2.5" style={{ color: "#1a7f4a" }} />
+                            </span>
+                          )}
+                          <span style={{ fontSize: 14, fontWeight: isBest ? 600 : 400, color: isBest ? "#1a7f4a" : "#1d1d1f" }}>{display}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table layout (hidden on mobile) */}
+          <table className="hidden sm:table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f5f5f7" }}>
-                <th
-                  style={{
-                    width: 140,
-                    minWidth: 110,
-                    padding: "12px 20px",
-                    textAlign: "left",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "rgba(0,0,0,0.42)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    position: "sticky",
-                    left: 0,
-                    background: "#f5f5f7",
-                    borderBottom: "1px solid rgba(0,0,0,0.08)",
-                  }}
-                >
+                <th style={{ width: 140, minWidth: 110, padding: "12px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.42)", textTransform: "uppercase", letterSpacing: "0.06em", position: "sticky", left: 0, background: "#f5f5f7", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
                   Feature
                 </th>
                 {flats.map((flat) => (
-                  <th
-                    key={flat.id}
-                    style={{
-                      minWidth: 160,
-                      padding: "12px 20px",
-                      textAlign: "center",
-                      borderBottom: "1px solid rgba(0,0,0,0.08)",
-                      borderLeft: "1px solid rgba(0,0,0,0.06)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1d1d1f" }}>
-                      Flat {flat.flat_number}
-                    </div>
-                    <div className="mt-1 flex justify-center">
-                      <StatusBadge status={flat.status} size="sm" />
-                    </div>
+                  <th key={flat.id} style={{ minWidth: 160, padding: "12px 20px", textAlign: "center", borderBottom: "1px solid rgba(0,0,0,0.08)", borderLeft: "1px solid rgba(0,0,0,0.06)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1d1d1f" }}>Flat {flat.flat_number}</div>
+                    <div className="mt-1 flex justify-center"><StatusBadge status={flat.status} size="sm" /></div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {ROWS.map((row, ri) => {
-                const bestIdx = getBestIdx(row);
+                const bestIdx = getBestIdx(row, flats);
                 return (
-                  <tr
-                    key={row.label}
-                    style={{ background: ri % 2 === 0 ? "#fff" : "#fafafa" }}
-                  >
-                    <td
-                      style={{
-                        padding: "11px 20px",
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: "rgba(0,0,0,0.55)",
-                        borderBottom: "1px solid rgba(0,0,0,0.05)",
-                        position: "sticky",
-                        left: 0,
-                        background: ri % 2 === 0 ? "#fff" : "#fafafa",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                  <tr key={row.label} style={{ background: ri % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <td style={{ padding: "11px 20px", fontSize: 13, fontWeight: 500, color: "rgba(0,0,0,0.55)", borderBottom: "1px solid rgba(0,0,0,0.05)", position: "sticky", left: 0, background: ri % 2 === 0 ? "#fff" : "#fafafa", whiteSpace: "nowrap" }}>
                       {row.label}
                     </td>
                     {flats.map((flat, fi) => {
                       const raw = row.get(flat);
                       const display = row.format ? row.format(raw) : raw != null ? String(raw) : "—";
                       const isBest = bestIdx === fi && flats.length > 1;
-                      const isStatus = row.label === "Status";
-
                       return (
-                        <td
-                          key={flat.id}
-                          style={{
-                            padding: "11px 20px",
-                            textAlign: "center",
-                            borderBottom: "1px solid rgba(0,0,0,0.05)",
-                            borderLeft: "1px solid rgba(0,0,0,0.06)",
-                            background: isBest ? "rgba(52,199,89,0.06)" : undefined,
-                          }}
-                        >
-                          {isStatus ? (
+                        <td key={flat.id} style={{ padding: "11px 20px", textAlign: "center", borderBottom: "1px solid rgba(0,0,0,0.05)", borderLeft: "1px solid rgba(0,0,0,0.06)", background: isBest ? "rgba(52,199,89,0.06)" : undefined }}>
+                          {row.label === "Status" ? (
                             <StatusBadge status={flat.status} size="sm" />
                           ) : (
                             <div className="flex items-center justify-center gap-1.5">
                               {isBest && (
-                                <span
-                                  className="w-4 h-4 rounded-full flex items-center justify-center"
-                                  style={{ background: "rgba(52,199,89,0.15)" }}
-                                >
+                                <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "rgba(52,199,89,0.15)" }}>
                                   <Check className="w-2.5 h-2.5" style={{ color: "#1a7f4a" }} />
                                 </span>
                               )}
-                              <span
-                                style={{
-                                  fontSize: 14,
-                                  fontWeight: isBest ? 600 : 400,
-                                  color: isBest ? "#1a7f4a" : "#1d1d1f",
-                                }}
-                              >
-                                {display}
-                              </span>
+                              <span style={{ fontSize: 14, fontWeight: isBest ? 600 : 400, color: isBest ? "#1a7f4a" : "#1d1d1f" }}>{display}</span>
                             </div>
                           )}
                         </td>
@@ -204,20 +172,13 @@ export default function CompareModal({ flats, projectName, onClose }: Props) {
           </table>
         </div>
 
-        {/* Footer CTA */}
-        <div
-          className="flex items-center justify-end gap-3 px-6 py-4 shrink-0"
-          style={{ borderTop: "1px solid rgba(0,0,0,0.08)", background: "#f5f5f7" }}
-        >
-          <p className="text-micro flex-1" style={{ color: "rgba(0,0,0,0.42)" }}>
-            Green highlights indicate the better value. EMI based on 80% loan at 8.5% for 20 years.
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-3 shrink-0" style={{ borderTop: "1px solid rgba(0,0,0,0.08)", background: "#f5f5f7" }}>
+          <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.42)", flex: 1 }}>
+            Green = better value. EMI: 80% loan @ 8.5% for 20yr.
           </p>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-standard text-caption font-medium"
-            style={{ background: "#e5e5ea", color: "#1d1d1f", border: "none", cursor: "pointer" }}
-          >
-            Close
+          <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: 8, background: "#e5e5ea", color: "#1d1d1f", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+            Done
           </button>
         </div>
       </div>

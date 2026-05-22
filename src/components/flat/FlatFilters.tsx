@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { FlatType, FlatStatus } from "@/lib/types";
 import { FLAT_TYPE_LABELS, STATUS_LABELS } from "@/lib/types";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react";
 
 export interface FilterState {
   flatType: FlatType[];
@@ -26,14 +27,6 @@ const FLAT_TYPE_OPTIONS: FlatType[] = ["studio", "1bhk", "2bhk", "3bhk", "4bhk",
 const STATUS_OPTIONS: FlatStatus[] = ["available", "reserved", "discussion"];
 const FACING_OPTIONS = ["North", "South", "East", "West", "North-East", "South-East"];
 
-const sectionHeadStyle: React.CSSProperties = {
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  color: "rgba(0,0,0,0.42)",
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  marginBottom: 10,
-};
 
 function ChipButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
@@ -50,6 +43,23 @@ function ChipButton({ active, onClick, label }: { active: boolean; onClick: () =
     >
       {label}
     </button>
+  );
+}
+
+function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between mb-2"
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+      >
+        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "rgba(0,0,0,0.42)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>{title}</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5" style={{ color: "rgba(0,0,0,0.3)" }} /> : <ChevronDown className="w-3.5 h-3.5" style={{ color: "rgba(0,0,0,0.3)" }} />}
+      </button>
+      {open && children}
+    </div>
   );
 }
 
@@ -96,8 +106,7 @@ export default function FlatFilters({ filters, onChange, totalFloors, maxPrice, 
       </div>
 
       {/* Flat Type */}
-      <div>
-        <div style={sectionHeadStyle}>Configuration</div>
+      <CollapsibleSection title="Configuration">
         <div className="flex flex-wrap gap-2">
           {FLAT_TYPE_OPTIONS.map((b) => (
             <ChipButton
@@ -108,11 +117,10 @@ export default function FlatFilters({ filters, onChange, totalFloors, maxPrice, 
             />
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Status */}
-      <div>
-        <div style={sectionHeadStyle}>Availability</div>
+      <CollapsibleSection title="Availability">
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map((s) => (
             <ChipButton
@@ -123,69 +131,40 @@ export default function FlatFilters({ filters, onChange, totalFloors, maxPrice, 
             />
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Floor range */}
-      <div>
-        <div style={sectionHeadStyle}>Floor Range</div>
-        <div
-          className="flex justify-between text-micro mb-2"
-          style={{ color: "rgba(0,0,0,0.56)" }}
-        >
+      <CollapsibleSection title="Floor Range" defaultOpen={false}>
+        <div className="flex justify-between text-micro mb-2" style={{ color: "rgba(0,0,0,0.56)" }}>
           <span>Floor {filters.minFloor}</span>
           <span>Floor {filters.maxFloor}</span>
         </div>
         <div className="flex flex-col gap-2">
-          <input
-            type="range"
-            min={1}
-            max={totalFloors}
-            value={filters.minFloor}
-            onChange={(e) =>
-              onChange({ ...filters, minFloor: Math.min(Number(e.target.value), filters.maxFloor - 1) })
-            }
-            className="w-full"
-            style={{ accentColor: "#0071e3" }}
-          />
-          <input
-            type="range"
-            min={1}
-            max={totalFloors}
-            value={filters.maxFloor}
-            onChange={(e) =>
-              onChange({ ...filters, maxFloor: Math.max(Number(e.target.value), filters.minFloor + 1) })
-            }
-            className="w-full"
-            style={{ accentColor: "#0071e3" }}
-          />
+          <input type="range" min={1} max={totalFloors} value={filters.minFloor}
+            onChange={(e) => onChange({ ...filters, minFloor: Math.min(Number(e.target.value), filters.maxFloor - 1) })}
+            className="w-full" style={{ accentColor: "#0071e3" }} />
+          <input type="range" min={1} max={totalFloors} value={filters.maxFloor}
+            onChange={(e) => onChange({ ...filters, maxFloor: Math.max(Number(e.target.value), filters.minFloor + 1) })}
+            className="w-full" style={{ accentColor: "#0071e3" }} />
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Budget */}
-      <div>
-        <div style={sectionHeadStyle}>Budget</div>
+      <CollapsibleSection title="Budget">
         <div className="text-micro mb-2" style={{ color: "rgba(0,0,0,0.56)" }}>
           Up to ₹{(filters.maxPrice / 10000000).toFixed(1)} Cr
         </div>
-        <input
-          type="range"
-          min={0}
-          max={maxPrice}
-          step={500000}
-          value={filters.maxPrice}
+        <input type="range" min={0} max={maxPrice} step={500000} value={filters.maxPrice}
           onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-          className="w-full"
-          style={{ accentColor: "#0071e3" }}
-        />
+          className="w-full" style={{ accentColor: "#0071e3" }} />
         <div className="flex justify-between text-micro mt-1" style={{ color: "rgba(0,0,0,0.38)" }}>
           <span>₹0</span>
           <span>₹{(maxPrice / 10000000).toFixed(1)} Cr</span>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Facing */}
-      <div>
-        <div style={sectionHeadStyle}>Facing</div>
+      <CollapsibleSection title="Facing" defaultOpen={false}>
         <div className="flex flex-wrap gap-2">
           {FACING_OPTIONS.map((d) => (
             <ChipButton
@@ -196,7 +175,7 @@ export default function FlatFilters({ filters, onChange, totalFloors, maxPrice, 
             />
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   );
 }

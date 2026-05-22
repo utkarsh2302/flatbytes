@@ -8,14 +8,12 @@ import FloorPlan from "@/components/tower/FloorPlan";
 import FlatDetailPanel from "@/components/flat/FlatDetailPanel";
 import FlatFilters, { FilterState, applyFilters } from "@/components/flat/FlatFilters";
 import CompareBar from "@/components/flat/CompareBar";
-import CompareModal from "@/components/flat/CompareModal";
-import VirtualTourModal from "@/components/flat/VirtualTourModal";
+const CompareModal = dynamic(() => import("@/components/flat/CompareModal"), { ssr: false });
+const VirtualTourModal = dynamic(() => import("@/components/flat/VirtualTourModal"), { ssr: false });
 import ConstructionTracker from "@/components/tower/ConstructionTracker";
 import AmenitiesShowcase from "@/components/tower/AmenitiesShowcase";
 import StatusBadge from "@/components/ui/StatusBadge";
 import UrgencyToast from "@/components/buyer/UrgencyToast";
-import LeadPopup from "@/components/buyer/LeadPopup";
-import StickyContactBar from "@/components/buyer/StickyContactBar";
 import ShareButton from "@/components/buyer/ShareButton";
 import ChatWidget from "@/components/buyer/ChatWidget";
 import Image from "next/image";
@@ -263,7 +261,7 @@ export default function ProjectExplorer({ project }: Props) {
 
           {/* 3D view */}
           {view === "3d" && (
-            <div className="w-full h-full relative" style={{ background: "#020917" }}>
+            <div className="w-full h-full relative" style={{ background: "#020917" }} role="region" aria-label="Interactive 3D building model">
               <ModelViewer
                 modelPath={project.model_3d_url ?? undefined}
                 buildingType={project.project_type === "commercial" ? "commercial" : "residential"}
@@ -590,8 +588,6 @@ export default function ProjectExplorer({ project }: Props) {
         sold={stats.sold}
         total={stats.total}
       />
-      <LeadPopup projectId={project.id} projectName={project.name} />
-      <StickyContactBar projectId={project.id} projectName={project.name} />
       <ChatWidget projectId={project.id} projectName={project.name} />
     </div>
   );

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
-import { MessageCircle, X, Send, Phone, User } from "lucide-react";
-import { submitLead } from "@/lib/actions";
+import { useState, useRef, useEffect } from "react";
+import { MessageCircle, X, Send } from "lucide-react";
+import UnifiedLeadForm from "@/components/buyer/UnifiedLeadForm";
 
 interface Message {
   role: "user" | "assistant";
@@ -27,10 +27,7 @@ export default function ChatWidget({ projectId, projectName }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [leadName, setLeadName] = useState("");
-  const [leadPhone, setLeadPhone] = useState("");
   const [leadDone, setLeadDone] = useState(false);
-  const [leadPending, startLeadTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,25 +78,17 @@ export default function ChatWidget({ projectId, projectName }: Props) {
     }
   }
 
-  function handleLeadSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    startLeadTransition(async () => {
-      try {
-        await submitLead({
-          project_id: projectId,
-          name: leadName,
-          phone: leadPhone,
-          source: "chatbot",
-          note: messages.filter((m) => m.role === "user").slice(-2).map((m) => m.content).join(" | "),
-        });
-        setLeadDone(true);
-        setShowLeadForm(false);
-      } catch {}
-    });
-  }
-
   return (
     <>
+      {/* Unified lead form triggered from chat */}
+      {showLeadForm && !open && (
+        <UnifiedLeadForm
+          projectId={projectId}
+          projectName={projectName}
+          onClose={() => { setShowLeadForm(false); setLeadDone(true); }}
+        />
+      )}
+
       {/* Bubble */}
       <button
         onClick={() => setOpen((o) => !o)}
@@ -189,29 +178,16 @@ export default function ChatWidget({ projectId, projectName }: Props) {
               </div>
             ))}
 
-            {/* Inline lead form */}
+            {/* Callback CTA */}
             {showLeadForm && !leadDone && (
               <div className="rounded-2xl p-3" style={{ background: "rgba(0,113,227,0.06)", border: "1px solid rgba(0,113,227,0.15)" }}>
-                <p className="text-xs font-medium mb-2" style={{ color: "#0071e3" }}>Get a free callback from our team</p>
-                <form onSubmit={handleLeadSubmit} className="space-y-2">
-                  <div className="relative">
-                    <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "rgba(0,0,0,0.3)" }} />
-                    <input type="text" placeholder="Name" value={leadName} onChange={(e) => setLeadName(e.target.value)} required
-                      className="w-full pl-7 pr-3 py-1.5 rounded-standard text-xs outline-none"
-                      style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#1d1d1f" }} />
-                  </div>
-                  <div className="relative">
-                    <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "rgba(0,0,0,0.3)" }} />
-                    <input type="tel" placeholder="Phone" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} required
-                      className="w-full pl-7 pr-3 py-1.5 rounded-standard text-xs outline-none"
-                      style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#1d1d1f" }} />
-                  </div>
-                  <button type="submit" disabled={leadPending}
-                    className="w-full py-1.5 rounded-standard text-xs font-semibold"
-                    style={{ background: "#0071e3", color: "#fff", opacity: leadPending ? 0.6 : 1 }}>
-                    {leadPending ? "Sending…" : "Request callback"}
-                  </button>
-                </form>
+                <p className="text-xs font-medium mb-2" style={{ color: "#0071e3" }}>Want a free callback from our team?</p>
+                <button
+                  onClick={() => { setOpen(false); setTimeout(() => setShowLeadForm(true), 100); }}
+                  className="w-full py-1.5 rounded-standard text-xs font-semibold"
+                  style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
+                  Request Callback
+                </button>
               </div>
             )}
             {leadDone && (

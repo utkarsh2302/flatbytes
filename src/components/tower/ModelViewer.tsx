@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 export type BuildingType = 'residential' | 'commercial'
 
@@ -70,20 +72,21 @@ function buildResidentialTower(scene: THREE.Scene, totalFloors: number, isUnderC
   const UC_SKIP = isUnderConstruction ? Math.max(3, Math.floor(totalFloors * 0.15)) : 0
   const targets: THREE.Mesh[] = []
 
-  const facadeMat = new THREE.MeshStandardMaterial({ color: 0xf2ede6, roughness: 0.72, metalness: 0 })
-  const bandMat = new THREE.MeshStandardMaterial({
-    color: 0xddd8d0, roughness: 0.68, metalness: 0,
+  const facadeMat = new THREE.MeshPhysicalMaterial({ color: 0xf2ede6, roughness: 0.72, metalness: 0, clearcoat: 0.05 })
+  const bandMat = new THREE.MeshPhysicalMaterial({
+    color: 0xddd8d0, roughness: 0.68, metalness: 0, clearcoat: 0.04,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   })
   const windowMat = new THREE.MeshPhysicalMaterial({
     color: 0x5588bb, emissive: 0x112244, emissiveIntensity: 0.3,
     transparent: true, opacity: 0.72, roughness: 0.04, metalness: 0.05, reflectivity: 0.85,
+    transmission: 0.25, ior: 1.5,
   })
-  const balconyMat = new THREE.MeshStandardMaterial({ color: 0xe8e2da, roughness: 0.65, metalness: 0.04 })
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.3, metalness: 0.6 })
+  const balconyMat = new THREE.MeshPhysicalMaterial({ color: 0xe8e2da, roughness: 0.65, metalness: 0.04, clearcoat: 0.08 })
+  const railMat = new THREE.MeshPhysicalMaterial({ color: 0xaaaaaa, roughness: 0.2, metalness: 0.75, clearcoat: 0.3 })
   const concreteMat = new THREE.MeshStandardMaterial({ color: 0xb4b0aa, roughness: 0.92, metalness: 0 })
   const scaffoldMat = new THREE.MeshStandardMaterial({ color: 0xcc8800, roughness: 0.4, metalness: 0.3 })
-  const tankMat = new THREE.MeshStandardMaterial({ color: 0x888884, roughness: 0.55, metalness: 0.35 })
+  const tankMat = new THREE.MeshPhysicalMaterial({ color: 0x888884, roughness: 0.5, metalness: 0.45, clearcoat: 0.15 })
 
   // Lobby
   const lobby = new THREE.Mesh(new THREE.BoxGeometry(W + 2.4, LOBBY_H, D + 2), facadeMat)
@@ -190,17 +193,18 @@ function buildCommercialTower(scene: THREE.Scene, totalFloors: number, isUnderCo
   const UC_SKIP = isUnderConstruction ? Math.max(4, Math.floor(totalFloors * 0.2)) : 0
   const targets: THREE.Mesh[] = []
 
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1c2028, roughness: 0.75, metalness: 0.08 })
+  const frameMat = new THREE.MeshPhysicalMaterial({ color: 0x1c2028, roughness: 0.6, metalness: 0.25, clearcoat: 0.2 })
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: 0x2a4a5e, emissive: 0x0a1420, emissiveIntensity: 0.22,
     transparent: true, opacity: 0.62, roughness: 0.03, metalness: 0.12, reflectivity: 0.95,
+    transmission: 0.3, ior: 1.5,
   })
-  const spandrelMat = new THREE.MeshStandardMaterial({
-    color: 0x1e2228, roughness: 0.12, metalness: 0.85,
+  const spandrelMat = new THREE.MeshPhysicalMaterial({
+    color: 0x1e2228, roughness: 0.08, metalness: 0.9, clearcoat: 0.4,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   })
-  const colMat = new THREE.MeshStandardMaterial({ color: 0x14181e, roughness: 0.55, metalness: 0.55 })
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x1a1e24, roughness: 0.5, metalness: 0.45 })
+  const colMat = new THREE.MeshPhysicalMaterial({ color: 0x14181e, roughness: 0.45, metalness: 0.7, clearcoat: 0.25 })
+  const roofMat = new THREE.MeshPhysicalMaterial({ color: 0x1a1e24, roughness: 0.4, metalness: 0.55, clearcoat: 0.2 })
   const lobbyGlassMat = new THREE.MeshPhysicalMaterial({
     color: 0x4a7898, transparent: true, opacity: 0.42, roughness: 0.02, metalness: 0.08, reflectivity: 0.95,
   })
@@ -354,15 +358,22 @@ export default function ModelViewer({
 
     const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 600)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' })
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = buildingType === 'commercial' ? 0.75 : 0.85
+    renderer.toneMappingExposure = buildingType === 'commercial' ? 0.75 : 0.88
     renderer.outputColorSpace = THREE.SRGBColorSpace
     mount.appendChild(renderer.domElement)
+
+    // PMREMGenerator for environment reflections on MeshPhysicalMaterial
+    const pmremGenerator = new THREE.PMREMGenerator(renderer)
+    pmremGenerator.compileEquirectangularShader()
+    const envRenderTarget = pmremGenerator.fromScene(new RoomEnvironment())
+    scene.environment = envRenderTarget.texture
+    pmremGenerator.dispose()
 
     scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
     const sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
@@ -457,35 +468,50 @@ export default function ModelViewer({
       return mat_default
     }
 
+    const loadModel = (group: THREE.Object3D) => {
+      const meshesFromModel: THREE.Mesh[] = []
+      group.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh
+          if (!mesh.material || (Array.isArray(mesh.material) && mesh.material.length === 0)) {
+            const rawMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+            mesh.material = materialForName(rawMat?.name ?? '')
+          }
+          mesh.castShadow = true; mesh.receiveShadow = true
+          meshesFromModel.push(mesh)
+        }
+      })
+      scene.add(group)
+      const box = new THREE.Box3().setFromObject(group)
+      const size = box.getSize(new THREE.Vector3())
+      const center = box.getCenter(new THREE.Vector3())
+      const normScale = 30 / Math.max(size.x, size.y, size.z)
+      group.scale.setScalar(normScale)
+      group.position.set(-center.x * normScale, -box.min.y * normScale, -center.z * normScale)
+      const box2 = new THREE.Box3().setFromObject(group)
+      const size2 = box2.getSize(new THREE.Vector3())
+      finalizeBuilding({ buildingHeight: size2.y, towerBaseY: 0, footprintX: Math.max(size2.x, size2.z) * 1.1, footprintZ: Math.max(size2.x, size2.z) * 1.1, raycastTargets: meshesFromModel })
+    }
+
     if (modelPath && modelPath.trim()) {
-      const loader = new OBJLoader()
-      loader.load(
-        modelPath,
-        (obj) => {
-          const meshesFromObj: THREE.Mesh[] = []
-          obj.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh
-              const rawMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
-              mesh.material = materialForName(rawMat?.name ?? '')
-              mesh.castShadow = true; mesh.receiveShadow = true
-              meshesFromObj.push(mesh)
-            }
-          })
-          scene.add(obj)
-          const box = new THREE.Box3().setFromObject(obj)
-          const size = box.getSize(new THREE.Vector3())
-          const center = box.getCenter(new THREE.Vector3())
-          const normScale = 30 / Math.max(size.x, size.y, size.z)
-          obj.scale.setScalar(normScale)
-          obj.position.set(-center.x * normScale, -box.min.y * normScale, -center.z * normScale)
-          const box2 = new THREE.Box3().setFromObject(obj)
-          const size2 = box2.getSize(new THREE.Vector3())
-          finalizeBuilding({ buildingHeight: size2.y, towerBaseY: 0, footprintX: Math.max(size2.x, size2.z) * 1.1, footprintZ: Math.max(size2.x, size2.z) * 1.1, raycastTargets: meshesFromObj })
-        },
-        (xhr) => { if (xhr.total) setProgressRef.current(Math.round((xhr.loaded / xhr.total) * 100)) },
-        (err) => { console.error('[ModelViewer] OBJ error:', err); setLoadingRef.current(false); onErrorRef.current?.(err) }
-      )
+      const ext = modelPath.split('?')[0].toLowerCase().split('.').pop()
+      if (ext === 'glb' || ext === 'gltf') {
+        const loader = new GLTFLoader()
+        loader.load(
+          modelPath,
+          (gltf) => { loadModel(gltf.scene) },
+          (xhr) => { if (xhr.total) setProgressRef.current(Math.round((xhr.loaded / xhr.total) * 100)) },
+          (err) => { console.error('[ModelViewer] GLTF error:', err); setLoadingRef.current(false); onErrorRef.current?.(err as Error) }
+        )
+      } else {
+        const loader = new OBJLoader()
+        loader.load(
+          modelPath,
+          (obj) => { loadModel(obj) },
+          (xhr) => { if (xhr.total) setProgressRef.current(Math.round((xhr.loaded / xhr.total) * 100)) },
+          (err) => { console.error('[ModelViewer] OBJ error:', err); setLoadingRef.current(false); onErrorRef.current?.(err) }
+        )
+      }
     } else {
       addEnvironment(scene, buildingType)
       const result = buildingType === 'commercial'

@@ -154,6 +154,42 @@ export async function getProjectsForAdmin(): Promise<Project[]> {
   });
 }
 
+export type FlatWithProject = Flat & {
+  projectId: string;
+  projectName: string;
+  projectCity: string;
+  projectCover: string | null;
+};
+
+export async function getFlatsForSearch(opts: {
+  types?: FlatType[];
+  maxPrice?: number;
+}): Promise<FlatWithProject[]> {
+  const supabase = createClient();
+
+  let query = supabase
+    .from("flats")
+    .select("*, projects(id, name, city, location, cover_image_url)")
+    .eq("status", "available");
+
+  if (opts.types && opts.types.length > 0) {
+    query = query.in("flat_type", opts.types as unknown as readonly ("studio" | "1bhk" | "2bhk" | "3bhk" | "4bhk" | "penthouse")[]);
+  }
+  if (opts.maxPrice) {
+    query = query.lte("total_price", opts.maxPrice);
+  }
+
+  const { data } = await query.order("total_price", { ascending: true });
+
+  return (data ?? []).map((row: any) => ({
+    ...mapFlat(row),
+    projectId: row.projects?.id ?? row.project_id,
+    projectName: row.projects?.name ?? "Unknown Project",
+    projectCity: row.projects?.city ?? row.projects?.location ?? "",
+    projectCover: row.projects?.cover_image_url ?? null,
+  }));
+}
+
 export async function getProjectFlatStats(projectId: string) {
   const supabase = createClient();
   const { data } = await supabase

@@ -10,7 +10,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const links = [
   { label: "Projects", href: "/projects" },
-  { label: "3D Explorer", href: "/projects/b1000000-0000-0000-0000-000000000001" },
+  { label: "3D Explorer", href: "/projects" },
   { label: "EMI Calc", href: "/emi-calculator" },
   { label: "Admin", href: "/admin" },
 ];
@@ -44,7 +44,7 @@ export default function Navbar() {
     : null;
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50">
+    <header className="fixed top-0 inset-x-0 z-50 pt-safe">
       {/* Apple-style dark glass nav */}
       <nav
         className="nav-glass"
