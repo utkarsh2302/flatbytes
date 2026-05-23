@@ -5,9 +5,25 @@ import type { Project, Flat, FlatStatus } from "@/lib/types";
 import { STATUS_COLORS, STATUS_LABELS, FLAT_TYPE_LABELS } from "@/lib/types";
 import { inrShort, inrFull } from "@/lib/format";
 import { updateFlatStatus } from "@/app/admin/inventory/actions";
-import { Search, X, Building2, Layers, Maximize2, Compass, User, Check } from "lucide-react";
+import { Search, X, Building2, Layers, Maximize2, Compass, User, Check, Flame, BarChart3, Grid3x3 } from "lucide-react";
 
 const STATUS_ORDER: FlatStatus[] = ["available", "reserved", "sold", "held", "discussion"];
+
+function heatColor(pctSold: number): string {
+  // 0% → green (#1cc77f), 50% → amber (#f59e0b), 100% → deep orange (#ea580c)
+  if (pctSold < 50) {
+    const t = pctSold / 50;
+    const r = Math.round(28 + (245 - 28) * t);
+    const g = Math.round(199 + (158 - 199) * t);
+    const b = Math.round(127 + (11 - 127) * t);
+    return `rgb(${r},${g},${b})`;
+  }
+  const t = (pctSold - 50) / 50;
+  const r = Math.round(245 + (234 - 245) * t);
+  const g = Math.round(158 + (88 - 158) * t);
+  const b = Math.round(11 + (12 - 11) * t);
+  return `rgb(${r},${g},${b})`;
+}
 
 export default function InventoryView({ projects }: { projects: Project[] }) {
   const [projectIdx, setProjectIdx] = useState(0);
@@ -18,6 +34,7 @@ export default function InventoryView({ projects }: { projects: Project[] }) {
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
   const [buyerName, setBuyerName] = useState("");
+  const [viewMode, setViewMode] = useState<"status" | "heatmap">("status");
 
   const project = projects[projectIdx];
   const tower = project?.towers[towerIdx];
@@ -58,6 +75,36 @@ export default function InventoryView({ projects }: { projects: Project[] }) {
   }, [tower]);
 
   const maxCols = useMemo(() => Math.max(1, ...floors.map((f) => f.flats.length)), [floors]);
+
+  const floorStats = useMemo(() =>
+    floors.map(({ floor, flats }) => {
+      const total = flats.length;
+      const sold = flats.filter((f) => f.status === "sold").length;
+      const reserved = flats.filter((f) => f.status === "reserved").length;
+      const available = flats.filter((f) => f.status === "available").length;
+      const pctSold = total ? Math.round(((sold + reserved) / total) * 100) : 0;
+      return { floor, total, sold, reserved, available, pctSold };
+    }),
+  [floors]);
+
+  const hotFloor = useMemo(() => {
+    if (!floorStats.length) return null;
+    return floorStats.reduce((best, cur) => cur.pctSold > best.pctSold ? cur : best, floorStats[0]);
+  }, [floorStats]);
+
+  const typeStats = useMemo(() => {
+    if (!tower) return [];
+    const map = new Map<string, { total: number; sold: number }>();
+    for (const f of tower.flats) {
+      if (!map.has(f.flat_type)) map.set(f.flat_type, { total: 0, sold: 0 });
+      const s = map.get(f.flat_type)!;
+      s.total++;
+      if (f.status === "sold" || f.status === "reserved") s.sold++;
+    }
+    return Array.from(map.entries())
+      .map(([type, s]) => ({ type, ...s, pct: Math.round((s.sold / s.total) * 100) }))
+      .sort((a, b) => b.pct - a.pct);
+  }, [tower]);
 
   function cellDim(f: Flat) {
     if (statusFilter !== "all" && f.status !== statusFilter) return true;
@@ -144,6 +191,20 @@ export default function InventoryView({ projects }: { projects: Project[] }) {
         </div>
       </div>
 
+      {/* View mode toggle */}
+      <div className="flex gap-1.5 mb-4">
+        <button onClick={() => setViewMode("status")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+          style={viewMode === "status" ? { background: "#1d1d1f", color: "#fff" } : { background: "#fff", color: "rgba(0,0,0,0.6)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <Grid3x3 className="w-3.5 h-3.5" /> Status View
+        </button>
+        <button onClick={() => setViewMode("heatmap")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+          style={viewMode === "heatmap" ? { background: "#ea580c", color: "#fff" } : { background: "#fff", color: "rgba(0,0,0,0.6)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <Flame className="w-3.5 h-3.5" /> Demand Heatmap
+        </button>
+      </div>
+
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2.5 mb-4">
         {/* Tower chips */}
@@ -198,51 +259,117 @@ export default function InventoryView({ projects }: { projects: Project[] }) {
 
       {/* Stacking plan */}
       <div className="rounded-2xl p-4 overflow-x-auto" style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        {viewMode === "heatmap" && (
+          <div className="flex items-center gap-3 mb-4 pb-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+            <Flame className="w-4 h-4" style={{ color: "#ea580c", flexShrink: 0 }} />
+            <span style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.55)" }}>Color = floor sell-through</span>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {[0, 25, 50, 75, 100].map((p) => (
+                <div key={p} className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded" style={{ background: heatColor(p) }} />
+                  <span style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)" }}>{p}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {floors.length === 0 ? (
           <div className="py-16 text-center" style={{ color: "rgba(0,0,0,0.35)" }}>
             <Layers className="w-9 h-9 mx-auto mb-3 opacity-30" />
             <p style={{ fontSize: "0.9rem" }}>No units in this tower</p>
           </div>
         ) : (
-          <div style={{ minWidth: maxCols * 78 + 56 }}>
-            {floors.map(({ floor, flats }) => (
-              <div key={floor} className="flex items-center gap-1.5 mb-1.5">
-                <div
-                  className="shrink-0 flex items-center justify-center rounded-lg"
-                  style={{ width: 44, height: 52, background: "#f0f0f2", fontSize: "0.7rem", fontWeight: 700, color: "rgba(0,0,0,0.45)" }}
-                >
-                  L{floor}
+          <div style={{ minWidth: maxCols * 78 + (viewMode === "heatmap" ? 130 : 56) }}>
+            {floors.map(({ floor, flats }, idx) => {
+              const stats = floorStats[idx];
+              const isHot = hotFloor?.floor === floor && stats.pctSold > 50;
+              return (
+                <div key={floor} className="flex items-center gap-1.5 mb-1.5">
+                  {/* Floor label */}
+                  <div className="shrink-0 flex flex-col items-center justify-center rounded-lg gap-0.5"
+                    style={{ width: viewMode === "heatmap" ? 80 : 44, height: 52, background: viewMode === "heatmap" ? heatColor(stats.pctSold) : "#f0f0f2" }}>
+                    <span style={{ fontSize: "0.7rem", fontWeight: 700, color: viewMode === "heatmap" ? "#fff" : "rgba(0,0,0,0.45)" }}>
+                      {isHot ? "🔥 " : ""}L{floor}
+                    </span>
+                    {viewMode === "heatmap" && (
+                      <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{stats.pctSold}% sold</span>
+                    )}
+                  </div>
+                  {flats.map((f) => {
+                    const dim = cellDim(f);
+                    const isSel = selected?.id === f.id;
+                    const bg = viewMode === "heatmap"
+                      ? (f.status === "sold" ? "#b91c1c" : f.status === "reserved" ? "#92400e" : f.status === "available" ? "#15803d" : STATUS_COLORS[f.status])
+                      : STATUS_COLORS[f.status];
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => { setSelected(f); setBuyerName(f.buyer_name ?? ""); }}
+                        className="shrink-0 rounded-lg flex flex-col items-center justify-center transition-all"
+                        style={{
+                          width: 72,
+                          height: 52,
+                          background: bg,
+                          opacity: dim ? 0.18 : 1,
+                          outline: isSel ? "2.5px solid #1d1d1f" : "none",
+                          outlineOffset: 1,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#fff" }}>{f.flat_number}</span>
+                        <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.85)" }}>
+                          {FLAT_TYPE_LABELS[f.flat_type] ?? f.flat_type}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {/* Per-floor stats bar (heatmap mode only) */}
+                  {viewMode === "heatmap" && (
+                    <div className="shrink-0 ml-2 flex items-center gap-2 pl-2" style={{ borderLeft: "1px solid rgba(0,0,0,0.06)" }}>
+                      <div className="text-right">
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: heatColor(stats.pctSold) }}>{stats.sold + stats.reserved}/{stats.total}</div>
+                        <div style={{ fontSize: "0.6rem", color: "rgba(0,0,0,0.4)" }}>sold+res</div>
+                      </div>
+                      <div className="text-right">
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1cc77f" }}>{stats.available}</div>
+                        <div style={{ fontSize: "0.6rem", color: "rgba(0,0,0,0.4)" }}>avail</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {flats.map((f) => {
-                  const dim = cellDim(f);
-                  const isSel = selected?.id === f.id;
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => { setSelected(f); setBuyerName(f.buyer_name ?? ""); }}
-                      className="shrink-0 rounded-lg flex flex-col items-center justify-center transition-all"
-                      style={{
-                        width: 72,
-                        height: 52,
-                        background: STATUS_COLORS[f.status],
-                        opacity: dim ? 0.18 : 1,
-                        outline: isSel ? "2.5px solid #1d1d1f" : "none",
-                        outlineOffset: 1,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#fff" }}>{f.flat_number}</span>
-                      <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.85)" }}>
-                        {FLAT_TYPE_LABELS[f.flat_type] ?? f.flat_type}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Demand analytics (heatmap mode) */}
+      {viewMode === "heatmap" && typeStats.length > 0 && (
+        <div className="mt-4 rounded-2xl p-5" style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-4 h-4" style={{ color: "#0071e3" }} />
+            <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1d1d1f" }}>Demand by Unit Type</h3>
+            {hotFloor && (
+              <span className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "rgba(234,88,12,0.1)", color: "#ea580c", fontSize: "0.72rem", fontWeight: 700 }}>
+                🔥 Floor {hotFloor.floor} hottest ({hotFloor.pctSold}% sold)
+              </span>
+            )}
+          </div>
+          <div className="space-y-3">
+            {typeStats.map((t) => (
+              <div key={t.type}>
+                <div className="flex justify-between mb-1" style={{ fontSize: "0.78rem" }}>
+                  <span style={{ fontWeight: 600, color: "#1d1d1f" }}>{FLAT_TYPE_LABELS[t.type as keyof typeof FLAT_TYPE_LABELS] ?? t.type}</span>
+                  <span style={{ color: "rgba(0,0,0,0.5)" }}>{t.sold}/{t.total} · <span style={{ fontWeight: 700, color: heatColor(t.pct) }}>{t.pct}%</span></span>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.05)" }}>
+                  <div style={{ width: `${t.pct}%`, height: "100%", background: heatColor(t.pct), borderRadius: 999, transition: "width 0.5s" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Detail / status drawer */}
       {selected && (

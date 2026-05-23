@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BarChart3, Users, FileText, CreditCard,
-  Briefcase, Boxes, ChevronLeft,
+  Briefcase, Boxes, ChevronLeft, CalendarCheck, MessageCircle, Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -13,9 +13,12 @@ const navItems = [
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Inventory", href: "/admin/inventory", icon: Boxes },
   { label: "Leads & CRM", href: "/admin/leads", icon: Users },
+  { label: "Site Visits", href: "/admin/visits", icon: CalendarCheck },
   { label: "Bookings", href: "/admin/bookings", icon: FileText },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Brokers", href: "/admin/brokers", icon: Briefcase },
+  { label: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle },
+  { label: "AI Insights", href: "/admin/ai-insights", icon: Sparkles },
 ];
 
 function isActiveLink(pathname: string, href: string, exact?: boolean) {
