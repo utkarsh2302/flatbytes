@@ -5,7 +5,8 @@ import type { Flat } from "@/lib/types";
 import { FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
 import UnifiedLeadForm from "@/components/buyer/UnifiedLeadForm";
-import { X, Maximize2, Compass, Layers, GitCompare, Eye, Heart, HeartOff, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
+import { X, Maximize2, Compass, Layers, GitCompare, Eye, Heart, ChevronDown, ChevronUp, MessageCircle, Sparkles } from "lucide-react";
+import LivingExperiencePanel from "@/components/flat/LivingExperiencePanel";
 
 interface Props {
   flat: Flat;
@@ -58,6 +59,7 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [showEmi, setShowEmi] = useState(false);
+  const [showLiving, setShowLiving] = useState(false);
   const [loanPct, setLoanPct] = useState(80);
   const [rate, setRate] = useState(8.5);
   const [tenure, setTenure] = useState(20);
@@ -310,6 +312,40 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
             <span style={{ color: "#0071e3" }}>{formatPrice(flat.total_price)}</span>
           </div>
         </div>
+      </div>
+
+      {/* Living Experience Intelligence */}
+      <div className="mx-5 mb-5" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
+        <button
+          onClick={() => setShowLiving(!showLiving)}
+          className="w-full flex items-center justify-between pt-4 pb-3"
+          style={{ background: "transparent", border: "none", cursor: "pointer" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(41,151,255,0.1)" }}>
+              <Sparkles className="w-4 h-4" style={{ color: "#2997ff" }} />
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "#1d1d1f" }}>Living Experience</div>
+              <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.42)" }}>Vastu · Sunlight · Airflow · Privacy</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!showLiving && flat.facing && (
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: "rgba(41,151,255,0.08)", color: "#2997ff" }}>
+                {flat.facing}
+              </span>
+            )}
+            {showLiving
+              ? <ChevronUp className="w-4 h-4" style={{ color: "rgba(0,0,0,0.35)" }} />
+              : <ChevronDown className="w-4 h-4" style={{ color: "rgba(0,0,0,0.35)" }} />}
+          </div>
+        </button>
+        {showLiving && (
+          <div style={{ borderRadius: 16, overflow: "hidden" }}>
+            <LivingExperiencePanel flat={flat} />
+          </div>
+        )}
       </div>
 
       {/* Lead form modal */}
