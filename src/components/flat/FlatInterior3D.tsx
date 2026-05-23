@@ -1,8 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { Flat } from '@/lib/types'
+import {
+  analyzeLivingExperience,
+  type VastuRating,
+  type VastuRoom,
+} from '@/lib/living-experience'
+import { Sun, Sparkles, Thermometer, Play, Pause } from 'lucide-react'
 
 type RoomKind = 'living' | 'bedroom' | 'master' | 'kitchen' | 'bathroom' | 'balcony' | 'office'
 
@@ -472,6 +478,122 @@ function addRailing(scene: THREE.Scene, run: WallRun, railMat: THREE.Material, g
   scene.add(segMesh(railMat, orient, fixed, from, to, 0.06, 0.08))
 }
 
+// ── Living Experience helpers ─────────────────────────────────────────────────
+
+type LiveMode = 'sunlight' | 'vastu' | 'heat'
+
+const VASTU_HEX: Record<VastuRating, number> = {
+  excellent: 0x1cc77f,
+  good: 0x3b82f6,
+  moderate: 0xf59e0b,
+  unfavorable: 0xef4444,
+}
+
+const VASTU_CSS: Record<VastuRating, string> = {
+  excellent: '#1cc77f',
+  good: '#3b82f6',
+  moderate: '#f59e0b',
+  unfavorable: '#ef4444',
+}
+
+const HEAT_HEX = {
+  cool: 0x60a5fa,
+  warm: 0xfbbf24,
+  hot: 0xef4444,
+} as const
+
+function vastuForRoomKind(kind: RoomKind, vastuRooms: VastuRoom[]): VastuRating {
+  const nameMap: Partial<Record<RoomKind, string>> = {
+    living: 'Living Room',
+    master: 'Master Bedroom',
+    bedroom: "Children's Room",
+    kitchen: 'Kitchen',
+    bathroom: 'Bathroom',
+    balcony: 'Balcony',
+  }
+  const name = nameMap[kind]
+  if (!name) return 'good'
+  return vastuRooms.find((r) => r.name === name)?.rating ?? 'good'
+}
+
+function vastuRoomFor(kind: RoomKind, vastuRooms: VastuRoom[]): VastuRoom | undefined {
+  const nameMap: Partial<Record<RoomKind, string>> = {
+    living: 'Living Room',
+    master: 'Master Bedroom',
+    bedroom: "Children's Room",
+    kitchen: 'Kitchen',
+    bathroom: 'Bathroom',
+    balcony: 'Balcony',
+  }
+  const name = nameMap[kind]
+  return name ? vastuRooms.find((r) => r.name === name) : undefined
+}
+
+function heatForRoom(kind: RoomKind, facingLabel: string): 'cool' | 'warm' | 'hot' {
+  const f = facingLabel.toLowerCase()
+  if (kind === 'master' || kind === 'bedroom' || kind === 'bathroom') return 'cool'
+  if (kind === 'balcony' || kind === 'living' || kind === 'kitchen') {
+    if (f.includes('west') || f.includes('south-west')) return 'hot'
+    if (f.includes('south')) return 'warm'
+    return 'cool'
+  }
+  return 'warm'
+}
+
+// Sun world position based on time + flat facing
+function sunPositionForTime(time: number, facingAngle: number, apCx: number, apCz: number) {
+  if (time < 5.5 || time > 18.5) return null
+  const sunCompass = 90 + ((time - 6) / 12) * 180 // 6am=E(90), 12pm=S(180), 6pm=W(270)
+  const relAngle = sunCompass - facingAngle      // 0 = front of balcony, 90 = right
+  const altDeg = Math.sin(((time - 6) / 12) * Math.PI) * 75
+  const altRad = (altDeg * Math.PI) / 180
+  const dist = 55
+  const radH = (relAngle * Math.PI) / 180
+  const horiz = dist * Math.cos(altRad)
+  // In scene: -Z = front of flat (toward balcony)
+  return {
+    x: apCx + horiz * Math.sin(radH),
+    y: dist * Math.sin(altRad) + 3,
+    z: apCz - horiz * Math.cos(radH),
+  }
+}
+
+function sunSettingsForTime(time: number) {
+  if (time < 5.5 || time > 19) return { color: 0x6a8eaa, intensity: 0.0 }
+  if (time < 6.5)  return { color: 0xff9170, intensity: 1.1 }
+  if (time < 10)   return { color: 0xfff0c4, intensity: 2.1 }
+  if (time < 15)   return { color: 0xfff8e0, intensity: 2.6 }
+  if (time < 17)   return { color: 0xffd590, intensity: 2.1 }
+  if (time < 18.5) return { color: 0xff8050, intensity: 1.5 }
+  return { color: 0x6a8eaa, intensity: 0.2 }
+}
+
+function ambientForTime(time: number) {
+  if (time < 5 || time > 19.5)   return { ambient: 0.55, hemi: 0.3 } // night
+  if (time < 6.5 || time > 18)   return { ambient: 0.9,  hemi: 0.55 } // twilight
+  return { ambient: 1.5, hemi: 0.9 } // day
+}
+
+function skyHexForTime(time: number): number {
+  if (time < 5)    return 0x0a1428
+  if (time < 6)    return 0x4c3470
+  if (time < 7)    return 0xf5a472
+  if (time < 10)   return 0xb8d8ec
+  if (time < 15)   return 0x7dc6eb
+  if (time < 17)   return 0xc5d6e0
+  if (time < 18.5) return 0xeb8a45
+  if (time < 20)   return 0x6a3a5a
+  return 0x0a1428
+}
+
+function timeLabel(t: number): string {
+  const hr = Math.floor(t)
+  const mn = Math.floor((t - hr) * 60)
+  const hr12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
+  const ampm = hr < 12 ? 'AM' : 'PM'
+  return `${hr12}:${String(mn).padStart(2, '0')} ${ampm}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
   flat: Flat
@@ -480,9 +602,31 @@ interface Props {
 
 export default function FlatInterior3D({ flat, isOffice = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
-  const [rooms, setRooms] = useState<Room[]>([])
   const [activeRoom, setActiveRoom] = useState<string | null>(null)
-  const [mode, setMode] = useState<'walk' | 'overview'>('overview')
+  const [camMode, setCamMode] = useState<'walk' | 'overview'>('overview')
+  const [time, setTime] = useState(10) // 10 AM by default — warm morning light
+  const [liveMode, setLiveMode] = useState<LiveMode>('sunlight')
+  const [playing, setPlaying] = useState(false)
+
+  const layout = useMemo(
+    () => (isOffice || /office/.test(flat.flat_type) ? getOfficeLayout(flat.flat_type) : getLayout(flat.flat_type)),
+    [flat.flat_type, isOffice],
+  )
+  const data = useMemo(
+    () => analyzeLivingExperience(flat.facing ?? null, flat.floor, flat.flat_type, flat.carpet_area_sqft ?? 0),
+    [flat.facing, flat.floor, flat.flat_type, flat.carpet_area_sqft],
+  )
+
+  // Live-update refs (set inside scene useEffect, read by time/mode useEffect)
+  const sceneRef = useRef<THREE.Scene | null>(null)
+  const sunLightRef = useRef<THREE.DirectionalLight | null>(null)
+  const sunMeshRef = useRef<THREE.Mesh | null>(null)
+  const sunGlowRef = useRef<THREE.Mesh | null>(null)
+  const ambientRef = useRef<THREE.AmbientLight | null>(null)
+  const hemiRef = useRef<THREE.HemisphereLight | null>(null)
+  const fogRef = useRef<THREE.Fog | null>(null)
+  const roomFloorsRef = useRef<Map<string, THREE.Mesh>>(new Map())
+
   const goToRef = useRef<((roomId: string) => void) | null>(null)
   const setOverviewRef = useRef<(() => void) | null>(null)
 
@@ -490,11 +634,6 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     if (!mountRef.current) return
     const mount = mountRef.current
     const W = mount.clientWidth, H = mount.clientHeight
-
-    const layout = isOffice || /office/.test(flat.flat_type)
-      ? getOfficeLayout(flat.flat_type)
-      : getLayout(flat.flat_type)
-    setRooms(layout)
 
     let cMinX = Infinity, cMinZ = Infinity, cMaxX = -Infinity, cMaxZ = -Infinity
     for (const r of layout) {
@@ -508,7 +647,10 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xdce4ec)
-    scene.fog = new THREE.Fog(0xdce4ec, 40, 90)
+    const sceneFog = new THREE.Fog(0xdce4ec, 40, 110)
+    scene.fog = sceneFog
+    sceneRef.current = scene
+    fogRef.current = sceneFog
 
     const camera = new THREE.PerspectiveCamera(55, W / H, 0.05, 300)
 
@@ -522,19 +664,41 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     renderer.outputColorSpace = THREE.SRGBColorSpace
     mount.appendChild(renderer.domElement)
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5))
+    // Lighting (initial values; live time effect updates them)
+    const ambient = new THREE.AmbientLight(0xffffff, 1.5)
+    scene.add(ambient)
+    ambientRef.current = ambient
+
     const sun = new THREE.DirectionalLight(0xfff4e0, 2.2)
     sun.position.set(apCx + 15, 30, apCz - 12)
     sun.castShadow = true
     sun.shadow.mapSize.set(2048, 2048)
-    sun.shadow.camera.near = 1; sun.shadow.camera.far = 100
+    sun.shadow.camera.near = 1; sun.shadow.camera.far = 140
     const sc = sun.shadow.camera as THREE.OrthographicCamera
     sc.left = -apW; sc.right = apW; sc.top = apD; sc.bottom = -apD
     sc.updateProjectionMatrix()
     sun.shadow.bias = -0.0004
     scene.add(sun)
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8275, 0.9))
+    sunLightRef.current = sun
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8275, 0.9)
+    scene.add(hemi)
+    hemiRef.current = hemi
+
+    // Visible sun sphere + outer glow — moves with the directional light
+    const sunMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(2.2, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0xfff4a0 }),
+    )
+    scene.add(sunMesh)
+    sunMeshRef.current = sunMesh
+
+    const sunGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(5.5, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0xfff4a0, transparent: true, opacity: 0.18 }),
+    )
+    scene.add(sunGlow)
+    sunGlowRef.current = sunGlow
 
     // Base slab
     const slab = new THREE.Mesh(
@@ -545,7 +709,8 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     slab.receiveShadow = true
     scene.add(slab)
 
-    // Per-room floor
+    // Per-room floor — keep refs so we can tint per liveMode
+    roomFloorsRef.current.clear()
     for (const r of layout) {
       const floor = new THREE.Mesh(
         new THREE.BoxGeometry(r.w - 0.02, 0.06, r.d - 0.02),
@@ -554,6 +719,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       floor.position.set(r.x + r.w / 2, 0.03, r.z + r.d / 2)
       floor.receiveShadow = true
       scene.add(floor)
+      roomFloorsRef.current.set(r.id, floor)
     }
 
     buildWalls(scene, layout)
@@ -594,7 +760,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       const r = layout.find((x) => x.id === roomId)
       if (!r) return
       curMode = 'walk'
-      setMode('walk')
+      setCamMode('walk')
       setActiveRoom(roomId)
       const rcx = r.x + r.w / 2, rcz = r.z + r.d / 2
       let dirx = rcx - apCx, dirz = rcz - apCz
@@ -609,7 +775,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     }
     function goOverview() {
       curMode = 'overview'
-      setMode('overview')
+      setCamMode('overview')
       setActiveRoom(null)
       applyOverview()
     }
@@ -752,56 +918,249 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
+      sceneRef.current = null
+      sunLightRef.current = null
+      sunMeshRef.current = null
+      sunGlowRef.current = null
+      ambientRef.current = null
+      hemiRef.current = null
+      fogRef.current = null
+      roomFloorsRef.current.clear()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flat.id, flat.flat_type, isOffice])
+  }, [flat.id, flat.flat_type, isOffice, layout])
+
+  // ── Live time-of-day + mode updates ───────────────────────────────────────
+  useEffect(() => {
+    const scene = sceneRef.current
+    const sun = sunLightRef.current
+    const sunMesh = sunMeshRef.current
+    const sunGlow = sunGlowRef.current
+    const ambient = ambientRef.current
+    const hemi = hemiRef.current
+    if (!scene || !sun || !sunMesh || !sunGlow || !ambient || !hemi) return
+
+    // Layout center
+    let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity
+    for (const r of layout) {
+      minX = Math.min(minX, r.x); minZ = Math.min(minZ, r.z)
+      maxX = Math.max(maxX, r.x + r.w); maxZ = Math.max(maxZ, r.z + r.d)
+    }
+    const apCx = (minX + maxX) / 2, apCz = (minZ + maxZ) / 2
+
+    // Position the sun
+    const pos = sunPositionForTime(time, data.facingAngle, apCx, apCz)
+    if (pos) {
+      sun.position.set(pos.x, pos.y, pos.z)
+      sunMesh.position.set(pos.x, pos.y, pos.z)
+      sunGlow.position.set(pos.x, pos.y, pos.z)
+      sunMesh.visible = true
+      sunGlow.visible = true
+    } else {
+      sunMesh.visible = false
+      sunGlow.visible = false
+    }
+
+    // Light color + intensity
+    const settings = sunSettingsForTime(time)
+    sun.color.setHex(settings.color)
+    sun.intensity = settings.intensity
+    ;(sunMesh.material as THREE.MeshBasicMaterial).color.setHex(settings.color)
+    ;(sunGlow.material as THREE.MeshBasicMaterial).color.setHex(settings.color)
+
+    const amb = ambientForTime(time)
+    ambient.intensity = amb.ambient
+    hemi.intensity = amb.hemi
+
+    // Sky + fog
+    const skyHex = skyHexForTime(time)
+    ;(scene.background as THREE.Color).setHex(skyHex)
+    if (fogRef.current) fogRef.current.color.setHex(skyHex)
+
+    // Mode-driven floor tint
+    for (const r of layout) {
+      const floor = roomFloorsRef.current.get(r.id)
+      if (!floor) continue
+      const mat = floor.material as THREE.MeshStandardMaterial
+      if (liveMode === 'vastu') {
+        mat.color.setHex(VASTU_HEX[vastuForRoomKind(r.kind, data.vastuRooms)])
+      } else if (liveMode === 'heat') {
+        mat.color.setHex(HEAT_HEX[heatForRoom(r.kind, data.facingLabel)])
+      } else {
+        mat.color.setHex(ROOM_TINT[r.kind])
+      }
+    }
+  }, [time, liveMode, layout, data])
+
+  // Auto-play full day cycle
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => setTime((t) => (t + 0.18) % 24), 80)
+    return () => clearInterval(id)
+  }, [playing])
+
+  const activeRoomData = activeRoom ? layout.find((r) => r.id === activeRoom) : null
+  const activeVastu = activeRoomData ? vastuRoomFor(activeRoomData.kind, data.vastuRooms) : undefined
+  const isNight = time < 5.5 || time > 19
+
+  const MODE_PILLS: { id: LiveMode; label: string; icon: React.ReactNode; color: string }[] = [
+    { id: 'sunlight', label: 'Sunlight', icon: <Sun className="w-3 h-3" />,        color: '#f59e0b' },
+    { id: 'vastu',    label: 'Vastu',    icon: <Sparkles className="w-3 h-3" />,   color: '#a855f7' },
+    { id: 'heat',     label: 'Heat',     icon: <Thermometer className="w-3 h-3" />, color: '#ef4444' },
+  ]
 
   return (
     <div className="relative w-full h-full">
       <div ref={mountRef} className="w-full h-full" style={{ cursor: 'grab' }} />
 
-      {/* Room navigation */}
+      {/* Room navigation — top-left */}
       <div className="absolute top-3 left-3 flex flex-col gap-1.5" style={{ maxWidth: 180 }}>
         <button
           onClick={() => setOverviewRef.current?.()}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
           style={
-            mode === 'overview'
+            camMode === 'overview'
               ? { background: '#0071e3', color: '#fff' }
               : { background: 'rgba(255,255,255,0.92)', color: '#1d1d1f', backdropFilter: 'blur(8px)' }
           }
         >
           <span style={{ fontSize: 13 }}>⌂</span> Dollhouse View
         </button>
-        {rooms.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => goToRef.current?.(r.id)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-left"
-            style={
-              activeRoom === r.id
-                ? { background: '#1d1d1f', color: '#fff' }
-                : { background: 'rgba(255,255,255,0.85)', color: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }
-            }
-          >
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ background: '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
-            />
-            {r.name}
-          </button>
-        ))}
+        {layout.map((r) => {
+          const isActive = activeRoom === r.id
+          const rating = liveMode === 'vastu' ? vastuForRoomKind(r.kind, data.vastuRooms) : null
+          return (
+            <button
+              key={r.id}
+              onClick={() => goToRef.current?.(r.id)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-left"
+              style={
+                isActive
+                  ? { background: '#1d1d1f', color: '#fff' }
+                  : { background: 'rgba(255,255,255,0.85)', color: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }
+              }
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: rating ? VASTU_CSS[rating] : '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
+              />
+              {r.name}
+            </button>
+          )
+        })}
       </div>
+
+      {/* Time + facing card — top-right */}
+      <div className="absolute top-3 right-3 flex flex-col items-end gap-2" style={{ maxWidth: 240 }}>
+        <div
+          className="rounded-2xl px-3.5 py-2.5"
+          style={{ background: 'rgba(13,17,23,0.78)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >
+          <div className="flex items-center gap-2.5">
+            {/* Compass */}
+            <svg width={36} height={36} viewBox="0 0 36 36" style={{ flexShrink: 0 }}>
+              <circle cx={18} cy={18} r={16} fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+              <g transform={`rotate(${-data.facingAngle} 18 18)`}>
+                <polygon points="18,5 16,18 20,18" fill="#ef4444" />
+                <polygon points="18,31 16,18 20,18" fill="rgba(255,255,255,0.4)" />
+              </g>
+              <text x={18} y={4.5} fontSize={5} fontWeight="700" fill="rgba(255,255,255,0.7)" textAnchor="middle">N</text>
+            </svg>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {data.facingLabel} · Floor {flat.floor}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+                {timeLabel(time)} <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{isNight ? 'NIGHT' : time < 12 ? 'MORNING' : time < 17 ? 'AFTERNOON' : 'EVENING'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Time scrubber */}
+          <div className="flex items-center gap-2 mt-2.5">
+            <button
+              onClick={() => setPlaying(!playing)}
+              aria-label={playing ? 'Pause' : 'Play day'}
+              style={{
+                width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                background: playing ? '#0071e3' : 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.18)', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {playing ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" style={{ marginLeft: 1 }} />}
+            </button>
+            <input
+              type="range" min={0} max={23.9} step={0.1} value={time}
+              onChange={(e) => { setTime(Number(e.target.value)); setPlaying(false) }}
+              style={{ flex: 1, accentColor: isNight ? '#94a3b8' : '#fbbf24', height: 3 }}
+            />
+          </div>
+        </div>
+
+        {/* Mode pills */}
+        <div className="flex gap-1 rounded-xl p-1" style={{ background: 'rgba(13,17,23,0.78)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          {MODE_PILLS.map((m) => (
+            <button
+              key={m.id} onClick={() => setLiveMode(m.id)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: liveMode === m.id ? m.color : 'transparent',
+                color: liveMode === m.id ? '#fff' : 'rgba(255,255,255,0.55)',
+                border: 'none', cursor: 'pointer',
+                boxShadow: liveMode === m.id ? `0 0 14px ${m.color}66` : 'none',
+              }}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active room callout — short, no paragraphs */}
+      {activeRoomData && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 rounded-2xl px-4 py-2.5"
+          style={{
+            bottom: 56, background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', gap: 12, maxWidth: 'calc(100vw - 32px)',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{activeRoomData.name}</div>
+          {activeVastu && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 100, textTransform: 'uppercase', letterSpacing: '0.04em',
+              background: VASTU_CSS[activeVastu.rating] + '33', color: VASTU_CSS[activeVastu.rating],
+            }}>
+              {activeVastu.rating === 'unfavorable' ? 'Needs Attention' : activeVastu.rating} · {activeVastu.direction}
+            </span>
+          )}
+          {liveMode === 'sunlight' && !isNight && (
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 100, background: 'rgba(245,158,11,0.18)', color: '#fbbf24' }}>
+              ☀ {time < 11 ? 'Morning light' : time < 16 ? 'Midday light' : 'Evening light'}
+            </span>
+          )}
+          {liveMode === 'heat' && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 100, textTransform: 'uppercase',
+              background: 'rgba(239,68,68,0.15)', color: '#fca5a5',
+            }}>
+              {heatForRoom(activeRoomData.kind, data.facingLabel)} zone
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Hint */}
       <div
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full pointer-events-none whitespace-nowrap"
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full pointer-events-none whitespace-nowrap"
         style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
       >
-        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          {mode === 'overview'
-            ? 'Drag to orbit · Scroll to zoom · Pick a room to step inside'
-            : 'Drag to look · W A S D / scroll to walk · Pick another room'}
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
+          {camMode === 'overview'
+            ? 'Drag to orbit · scroll to zoom · pick a room to step inside · scrub time to watch the sun move'
+            : 'Drag to look · WASD / scroll to walk · scrub time to see how light fills this room'}
         </span>
       </div>
     </div>
