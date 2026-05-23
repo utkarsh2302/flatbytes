@@ -353,12 +353,14 @@ export default function ModelViewer({
 
     const isGLB = modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf'))
 
-    const skyColor = isGLB ? 0x8bbfe0 : (buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8)
+    // Vivid architectural sky for GLB — gradient from horizon white to deep blue apex
+    const skyColor = isGLB ? 0x6ab4e8 : (buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8)
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(skyColor)
-    scene.fog = new THREE.Fog(isGLB ? 0xc4dff0 : skyColor, isGLB ? 180 : 200, isGLB ? 420 : 500)
+    // Push fog far so building stays crisp, only horizon hazes
+    scene.fog = new THREE.Fog(isGLB ? 0xb8d8f0 : skyColor, isGLB ? 280 : 200, isGLB ? 600 : 500)
 
-    const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 600)
+    const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 800)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' })
     renderer.setSize(W, H)
@@ -366,7 +368,7 @@ export default function ModelViewer({
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = isGLB ? 1.05 : (buildingType === 'commercial' ? 0.75 : 0.88)
+    renderer.toneMappingExposure = isGLB ? 1.35 : (buildingType === 'commercial' ? 0.75 : 0.88)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     mount.appendChild(renderer.domElement)
 
@@ -380,10 +382,10 @@ export default function ModelViewer({
     // Lighting — architectural quality for GLB, standard for procedural
     let sun: THREE.DirectionalLight
     if (isGLB) {
-      scene.add(new THREE.AmbientLight(0xfff8f0, 1.8))
-      // Key sun — warm afternoon angle, strong & directional
-      sun = new THREE.DirectionalLight(0xfff5e0, 4.5)
-      sun.position.set(60, 120, -40)
+      scene.add(new THREE.AmbientLight(0xfff8f0, 1.2))
+      // Key sun — matches render: front-right, high contrast
+      sun = new THREE.DirectionalLight(0xfff4d0, 6.0)
+      sun.position.set(50, 100, -60)
       sun.castShadow = true
       sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
       sun.shadow.camera.near = 1; sun.shadow.camera.far = 600
@@ -392,13 +394,13 @@ export default function ModelViewer({
       sun.shadow.bias = -0.0002
       sun.shadow.normalBias = 0.02
       scene.add(sun)
-      // Cool blue fill from opposite side (sky bounce)
-      const fill = new THREE.DirectionalLight(0xadd8ff, 1.6)
-      fill.position.set(-60, 60, 60); scene.add(fill)
+      // Cool sky fill from left
+      const fill = new THREE.DirectionalLight(0x9ec8f5, 1.8)
+      fill.position.set(-80, 50, 80); scene.add(fill)
       // Warm ground bounce
-      const bounce = new THREE.DirectionalLight(0xffe8c8, 0.6)
-      bounce.position.set(0, -20, 0); scene.add(bounce)
-      scene.add(new THREE.HemisphereLight(0x87ceeb, 0x8a7a60, 1.2))
+      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.5)
+      bounce.position.set(0, -30, 0); scene.add(bounce)
+      scene.add(new THREE.HemisphereLight(0x6ab4e8, 0x9a8a70, 1.0))
     } else {
       scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
       sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
@@ -419,7 +421,7 @@ export default function ModelViewer({
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(400, 400),
       isGLB
-        ? new THREE.MeshStandardMaterial({ color: 0xc8c4b8, roughness: 0.94, metalness: 0 }) // light stone
+        ? new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 0.88, metalness: 0 }) // warm stone plaza
         : new THREE.MeshStandardMaterial({ color: buildingType === 'commercial' ? 0x888890 : 0xb0a090, roughness: 0.95 })
     )
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
@@ -444,7 +446,7 @@ export default function ModelViewer({
     let currentHoverFloor: number | null = null
     let highlightEnabled = false
 
-    const camState = { theta: -Math.PI / 6, phi: isGLB ? 0.92 : 0.78, radius: 60, targetX: 0, targetY: 10, targetZ: 0, thetaVel: 0, phiVel: 0 }
+    const camState = { theta: isGLB ? -0.95 : -Math.PI / 6, phi: isGLB ? 1.38 : 0.78, radius: 60, targetX: 0, targetY: 10, targetZ: 0, thetaVel: 0, phiVel: 0 }
     function updateCamera() {
       camera.position.set(
         camState.targetX + camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta),
@@ -466,10 +468,11 @@ export default function ModelViewer({
       const fovRad = (42 * Math.PI) / 180
       const fitDist = (maxDim * 0.65 / Math.sin(fovRad / 2)) * 1.25
 
-      camState.radius = isGLB ? fitDist * 0.72 : fitDist
-      camState.targetY = totalH * (isGLB ? 0.46 : 0.42)
-      camState.phi = isGLB ? 0.88 : 0.82
-      camState.theta = -Math.PI / 5
+      // GLB: drive radius directly from building height so it fills the frame
+      camState.radius = isGLB ? buildingHeight * 1.75 : fitDist
+      camState.targetY = totalH * (isGLB ? 0.34 : 0.42)
+      camState.phi = isGLB ? 1.42 : 0.82
+      camState.theta = isGLB ? -0.95 : -Math.PI / 5
       updateCamera()
 
       sun.shadow.camera.left = -maxDim; sun.shadow.camera.right = maxDim
@@ -521,14 +524,22 @@ export default function ModelViewer({
       const box = new THREE.Box3().setFromObject(group)
       const size = box.getSize(new THREE.Vector3())
       const center = box.getCenter(new THREE.Vector3())
-      // Scale so tallest dimension = 38 units (slightly larger for GLB so it fills the frame)
-      const targetSize = isGLB ? 38 : 30
-      const normScale = targetSize / Math.max(size.x, size.y, size.z)
+
+      // GLB: scale by building HEIGHT only (ignoring huge ground plane that dominates max dimension)
+      // OBJ: scale by largest dimension as before
+      const targetSize = 38
+      const normScale = isGLB
+        ? targetSize / size.y          // scale so tower height = 38 units
+        : targetSize / Math.max(size.x, size.y, size.z)
+
       group.scale.setScalar(normScale)
       group.position.set(-center.x * normScale, -box.min.y * normScale, -center.z * normScale)
       const box2 = new THREE.Box3().setFromObject(group)
       const size2 = box2.getSize(new THREE.Vector3())
-      finalizeBuilding({ buildingHeight: size2.y, towerBaseY: 0, footprintX: Math.max(size2.x, size2.z) * 1.1, footprintZ: Math.max(size2.x, size2.z) * 1.1, raycastTargets: meshesFromModel })
+
+      // GLB: footprint is ~45% of tower height (avoids ground-plane inflating the fit distance)
+      const footprint = isGLB ? size2.y * 0.45 : Math.max(size2.x, size2.z) * 1.1
+      finalizeBuilding({ buildingHeight: size2.y, towerBaseY: 0, footprintX: footprint, footprintZ: footprint, raycastTargets: meshesFromModel })
     }
 
     if (modelPath && modelPath.trim()) {
