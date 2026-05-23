@@ -353,12 +353,47 @@ export default function ModelViewer({
 
     const isGLB = modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf'))
 
-    // Vivid architectural sky for GLB — gradient from horizon white to deep blue apex
-    const skyColor = isGLB ? 0x6ab4e8 : (buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8)
+    // Sky setup
+    const skyColor = isGLB ? 0x7ec8f0 : (buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8)
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(skyColor)
-    // Push fog far so building stays crisp, only horizon hazes
-    scene.fog = new THREE.Fog(isGLB ? 0xb8d8f0 : skyColor, isGLB ? 280 : 200, isGLB ? 600 : 500)
+
+    if (isGLB) {
+      // Gradient sky: use a large hemisphere/dome as background
+      const skyGeo = new THREE.SphereGeometry(500, 32, 16)
+      const skyMat = new THREE.ShaderMaterial({
+        uniforms: {
+          topColor:    { value: new THREE.Color(0x1a6fa8) },
+          bottomColor: { value: new THREE.Color(0xd8eef8) },
+          offset:      { value: 20 },
+          exponent:    { value: 0.4 },
+        },
+        vertexShader: `
+          varying vec3 vWorldPos;
+          void main() {
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldPos = worldPos.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }`,
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 bottomColor;
+          uniform float offset;
+          uniform float exponent;
+          varying vec3 vWorldPos;
+          void main() {
+            float h = normalize(vWorldPos + offset).y;
+            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+          }`,
+        side: THREE.BackSide,
+        depthWrite: false,
+      })
+      const skyDome = new THREE.Mesh(skyGeo, skyMat)
+      scene.add(skyDome)
+      scene.fog = new THREE.FogExp2(0xc8e4f5, 0.0008)
+    } else {
+      scene.background = new THREE.Color(skyColor)
+      scene.fog = new THREE.Fog(skyColor, 200, 500)
+    }
 
     const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 800)
 
@@ -382,25 +417,28 @@ export default function ModelViewer({
     // Lighting — architectural quality for GLB, standard for procedural
     let sun: THREE.DirectionalLight
     if (isGLB) {
-      scene.add(new THREE.AmbientLight(0xfff8f0, 1.2))
-      // Key sun — matches render: front-right, high contrast
-      sun = new THREE.DirectionalLight(0xfff4d0, 6.0)
-      sun.position.set(50, 100, -60)
+      scene.add(new THREE.AmbientLight(0xfff8f2, 1.4))
+      // Key sun
+      sun = new THREE.DirectionalLight(0xfff4d0, 5.5)
+      sun.position.set(60, 120, -70)
       sun.castShadow = true
       sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
-      sun.shadow.camera.near = 1; sun.shadow.camera.far = 600
-      sun.shadow.camera.left = -120; sun.shadow.camera.right = 120
-      sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120
-      sun.shadow.bias = -0.0002
-      sun.shadow.normalBias = 0.02
+      sun.shadow.camera.near = 1; sun.shadow.camera.far = 700
+      sun.shadow.camera.left = -150; sun.shadow.camera.right = 150
+      sun.shadow.camera.top = 150; sun.shadow.camera.bottom = -150
+      sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.02
       scene.add(sun)
-      // Cool sky fill from left
-      const fill = new THREE.DirectionalLight(0x9ec8f5, 1.8)
-      fill.position.set(-80, 50, 80); scene.add(fill)
+      // Sky fill — cool blue from opposite side
+      const fill = new THREE.DirectionalLight(0x8ec8f8, 2.2)
+      fill.position.set(-80, 60, 80); scene.add(fill)
+      // Front fill — softens shadow side
+      const front = new THREE.DirectionalLight(0xd0e8ff, 1.2)
+      front.position.set(0, 40, 100); scene.add(front)
       // Warm ground bounce
-      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.5)
-      bounce.position.set(0, -30, 0); scene.add(bounce)
-      scene.add(new THREE.HemisphereLight(0x6ab4e8, 0x9a8a70, 1.0))
+      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.6)
+      bounce.position.set(0, -50, 0); scene.add(bounce)
+      // Hemisphere for sky/ground color bleed
+      scene.add(new THREE.HemisphereLight(0x7ec8f0, 0xb09060, 1.2))
     } else {
       scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
       sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
@@ -417,20 +455,16 @@ export default function ModelViewer({
       scene.add(new THREE.HemisphereLight(skyColor, 0x9a8e78, 0.7))
     }
 
-    // Ground — stone plaza for GLB, standard for procedural
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(400, 400),
-      isGLB
-        ? new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 0.88, metalness: 0 }) // warm stone plaza
-        : new THREE.MeshStandardMaterial({ color: buildingType === 'commercial' ? 0x888890 : 0xb0a090, roughness: 0.95 })
-    )
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
-
-    // Grid — hide for real models, show for procedural
-    const grid = new THREE.GridHelper(200, 80, 0x888070, 0x9a9080)
-    grid.position.y = 0.02
-    grid.visible = !isGLB
-    scene.add(grid)
+    // Ground — GLB has its own detailed ground (roads, grass, parking), skip for GLB
+    if (!isGLB) {
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(400, 400),
+        new THREE.MeshStandardMaterial({ color: buildingType === 'commercial' ? 0x888890 : 0xb0a090, roughness: 0.95 })
+      )
+      ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
+      const grid = new THREE.GridHelper(200, 80, 0x888070, 0x9a9080)
+      grid.position.y = 0.02; scene.add(grid)
+    }
 
     // Floor highlight plane — scaled after build
     const floorHighlight = new THREE.Mesh(
