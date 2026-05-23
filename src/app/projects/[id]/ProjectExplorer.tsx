@@ -19,7 +19,7 @@ import Image from "next/image";
 import {
   MapPin, Building2, SlidersHorizontal, Layers, Box, BarChart2, X,
   Shield, ChevronRight, ChevronLeft, Sparkles, Calendar, Maximize2,
-  CheckCircle2,
+  CheckCircle2, ImageIcon,
 } from "lucide-react";
 
 const ModelViewer = dynamic(() => import("@/components/tower/ModelViewer"), {
@@ -35,7 +35,7 @@ const ModelViewer = dynamic(() => import("@/components/tower/ModelViewer"), {
   ),
 });
 
-type ViewMode = "3d" | "floor" | "overview";
+type ViewMode = "3d" | "floor" | "overview" | "visual";
 
 interface Props { project: Project; }
 
@@ -61,7 +61,7 @@ const FLAT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ProjectExplorer({ project }: Props) {
-  const [view, setView]                     = useState<ViewMode>("3d");
+  const [view, setView]                     = useState<ViewMode>("visual");
   const [selectedFloor, setSelectedFloor]   = useState<number | null>(null);
   const [selectedFlat, setSelectedFlat]     = useState<Flat | null>(null);
   const [selectedTowerIdx, setSelectedTowerIdx] = useState(0);
@@ -173,6 +173,7 @@ export default function ProjectExplorer({ project }: Props) {
         <div className="flex items-center gap-0.5 rounded-comfortable p-0.5 shrink-0"
           style={{ background:"#f5f5f7" }}>
           {([
+            { id:"visual",   icon:<ImageIcon className="w-3.5 h-3.5"/>, label:"Visual" },
             { id:"3d",       icon:<Box className="w-3.5 h-3.5"/>,     label:"3D" },
             { id:"floor",    icon:<Layers className="w-3.5 h-3.5"/>,  label:"Floor" },
             { id:"overview", icon:<BarChart2 className="w-3.5 h-3.5"/>, label:"Info" },
@@ -227,6 +228,54 @@ export default function ProjectExplorer({ project }: Props) {
               style={{ background:"#1d1d1f", color:"#fff", boxShadow:"rgba(0,0,0,0.3) 0px 8px 24px 0px", animation:"fadeSlideDown 0.2s ease" }}>
               <Sparkles className="w-3.5 h-3.5" style={{ color:"#0071e3" }}/>
               Floor {floorToast} selected
+            </div>
+          )}
+
+          {/* ═══ VISUAL RENDER VIEW ════════════════════════════════════ */}
+          {view === "visual" && (
+            <div className="w-full h-full relative overflow-hidden" style={{ background: "#0a0f1a" }}>
+              <Image
+                src="/images/building_render.jpg"
+                alt={`${project.name} architectural visualization`}
+                fill
+                className="object-contain"
+                priority
+                sizes="100vw"
+              />
+              {/* Gradient overlay bottom */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: "linear-gradient(to top, rgba(10,15,26,0.92) 0%, rgba(10,15,26,0.3) 40%, transparent 70%)" }}/>
+              {/* Top badge */}
+              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+                style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#1cc77f" }}/>
+                Photorealistic Render · Cycles
+              </div>
+              {/* Bottom CTA */}
+              <div className="absolute bottom-0 left-0 right-0 z-10 p-6 sm:p-8">
+                <div className="max-w-2xl">
+                  <h2 style={{ fontSize: "clamp(1.2rem,3vw,2rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                    {project.name}
+                  </h2>
+                  <p className="mt-1.5 text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
+                    {project.location}
+                  </p>
+                  <div className="flex items-center gap-3 mt-4">
+                    <button onClick={() => setView("3d")}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                      style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
+                      <Box className="w-4 h-4"/>
+                      Explore in 3D
+                    </button>
+                    <button onClick={() => setView("floor")}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                      style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
+                      <Layers className="w-4 h-4"/>
+                      View Floor Plans
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
