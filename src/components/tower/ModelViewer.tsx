@@ -351,10 +351,12 @@ export default function ModelViewer({
     const mount = mountRef.current
     const W = mount.clientWidth, H = mount.clientHeight
 
-    const skyColor = buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8
+    const isGLB = modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf'))
+
+    const skyColor = isGLB ? 0x8bbfe0 : (buildingType === 'commercial' ? 0x8095ac : 0x9ab8d8)
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(skyColor)
-    scene.fog = new THREE.FogExp2(skyColor, buildingType === 'commercial' ? 0.004 : 0.005)
+    scene.fog = new THREE.Fog(isGLB ? 0xc4dff0 : skyColor, isGLB ? 180 : 200, isGLB ? 420 : 500)
 
     const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 600)
 
@@ -364,7 +366,7 @@ export default function ModelViewer({
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = buildingType === 'commercial' ? 0.75 : 0.88
+    renderer.toneMappingExposure = isGLB ? 1.05 : (buildingType === 'commercial' ? 0.75 : 0.88)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     mount.appendChild(renderer.domElement)
 
@@ -375,28 +377,58 @@ export default function ModelViewer({
     scene.environment = envRenderTarget.texture
     pmremGenerator.dispose()
 
-    scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
-    const sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
-    sun.position.set(-40, 100, -50)
-    sun.castShadow = true
-    sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048
-    sun.shadow.camera.near = 1; sun.shadow.camera.far = 500
-    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100
-    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100
-    sun.shadow.bias = -0.0003
-    scene.add(sun)
-    const fill = new THREE.DirectionalLight(0xaaccff, 1.2)
-    fill.position.set(50, 40, 50); scene.add(fill)
-    scene.add(new THREE.HemisphereLight(skyColor, 0x9a8e78, 0.7))
+    // Lighting — architectural quality for GLB, standard for procedural
+    let sun: THREE.DirectionalLight
+    if (isGLB) {
+      scene.add(new THREE.AmbientLight(0xfff8f0, 1.8))
+      // Key sun — warm afternoon angle, strong & directional
+      sun = new THREE.DirectionalLight(0xfff5e0, 4.5)
+      sun.position.set(60, 120, -40)
+      sun.castShadow = true
+      sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
+      sun.shadow.camera.near = 1; sun.shadow.camera.far = 600
+      sun.shadow.camera.left = -120; sun.shadow.camera.right = 120
+      sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120
+      sun.shadow.bias = -0.0002
+      sun.shadow.normalBias = 0.02
+      scene.add(sun)
+      // Cool blue fill from opposite side (sky bounce)
+      const fill = new THREE.DirectionalLight(0xadd8ff, 1.6)
+      fill.position.set(-60, 60, 60); scene.add(fill)
+      // Warm ground bounce
+      const bounce = new THREE.DirectionalLight(0xffe8c8, 0.6)
+      bounce.position.set(0, -20, 0); scene.add(bounce)
+      scene.add(new THREE.HemisphereLight(0x87ceeb, 0x8a7a60, 1.2))
+    } else {
+      scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
+      sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
+      sun.position.set(-40, 100, -50)
+      sun.castShadow = true
+      sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048
+      sun.shadow.camera.near = 1; sun.shadow.camera.far = 500
+      sun.shadow.camera.left = -100; sun.shadow.camera.right = 100
+      sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100
+      sun.shadow.bias = -0.0003
+      scene.add(sun)
+      const fill = new THREE.DirectionalLight(0xaaccff, 1.2)
+      fill.position.set(50, 40, 50); scene.add(fill)
+      scene.add(new THREE.HemisphereLight(skyColor, 0x9a8e78, 0.7))
+    }
 
-    const groundColor = buildingType === 'commercial' ? 0x888890 : 0xb0a090
+    // Ground — stone plaza for GLB, standard for procedural
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(400, 400),
-      new THREE.MeshStandardMaterial({ color: groundColor, roughness: 0.95 })
+      isGLB
+        ? new THREE.MeshStandardMaterial({ color: 0xc8c4b8, roughness: 0.94, metalness: 0 }) // light stone
+        : new THREE.MeshStandardMaterial({ color: buildingType === 'commercial' ? 0x888890 : 0xb0a090, roughness: 0.95 })
     )
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
+
+    // Grid — hide for real models, show for procedural
     const grid = new THREE.GridHelper(200, 80, 0x888070, 0x9a9080)
-    grid.position.y = 0.02; scene.add(grid)
+    grid.position.y = 0.02
+    grid.visible = !isGLB
+    scene.add(grid)
 
     // Floor highlight plane — scaled after build
     const floorHighlight = new THREE.Mesh(
@@ -412,7 +444,7 @@ export default function ModelViewer({
     let currentHoverFloor: number | null = null
     let highlightEnabled = false
 
-    const camState = { theta: -Math.PI / 5, phi: 0.78, radius: 60, targetX: 0, targetY: 10, targetZ: 0, thetaVel: 0, phiVel: 0 }
+    const camState = { theta: -Math.PI / 6, phi: isGLB ? 0.92 : 0.78, radius: 60, targetX: 0, targetY: 10, targetZ: 0, thetaVel: 0, phiVel: 0 }
     function updateCamera() {
       camera.position.set(
         camState.targetX + camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta),
@@ -434,9 +466,9 @@ export default function ModelViewer({
       const fovRad = (42 * Math.PI) / 180
       const fitDist = (maxDim * 0.65 / Math.sin(fovRad / 2)) * 1.25
 
-      camState.radius = fitDist
-      camState.targetY = totalH * 0.42
-      camState.phi = 0.82
+      camState.radius = isGLB ? fitDist * 0.72 : fitDist
+      camState.targetY = totalH * (isGLB ? 0.46 : 0.42)
+      camState.phi = isGLB ? 0.88 : 0.82
       camState.theta = -Math.PI / 5
       updateCamera()
 
@@ -473,9 +505,13 @@ export default function ModelViewer({
       group.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh
-          if (!mesh.material || (Array.isArray(mesh.material) && mesh.material.length === 0)) {
+          // For GLB: preserve embedded materials, just ensure shadows
+          // For OBJ: apply name-based materials since OBJ has no embedded textures
+          if (!isGLB) {
             const rawMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
-            mesh.material = materialForName(rawMat?.name ?? '')
+            if (!rawMat || (rawMat as THREE.Material).type === 'MeshBasicMaterial') {
+              mesh.material = materialForName((rawMat as THREE.Material)?.name ?? '')
+            }
           }
           mesh.castShadow = true; mesh.receiveShadow = true
           meshesFromModel.push(mesh)
@@ -485,7 +521,9 @@ export default function ModelViewer({
       const box = new THREE.Box3().setFromObject(group)
       const size = box.getSize(new THREE.Vector3())
       const center = box.getCenter(new THREE.Vector3())
-      const normScale = 30 / Math.max(size.x, size.y, size.z)
+      // Scale so tallest dimension = 38 units (slightly larger for GLB so it fills the frame)
+      const targetSize = isGLB ? 38 : 30
+      const normScale = targetSize / Math.max(size.x, size.y, size.z)
       group.scale.setScalar(normScale)
       group.position.set(-center.x * normScale, -box.min.y * normScale, -center.z * normScale)
       const box2 = new THREE.Box3().setFromObject(group)
