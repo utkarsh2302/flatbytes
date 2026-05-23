@@ -4,6 +4,12 @@ import type { Flat, FlatStatus } from "@/lib/types";
 import { STATUS_LABELS, FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
 
+function fmtPrice(p: number) {
+  if (p >= 10000000) return `₹${(p / 10000000).toFixed(1)}Cr`;
+  if (p >= 100000) return `₹${(p / 100000).toFixed(0)}L`;
+  return `₹${p.toLocaleString("en-IN")}`;
+}
+
 interface Props {
   flats: Flat[];
   floor: number;
@@ -21,8 +27,8 @@ const LIGHT_STATUS: Record<FlatStatus, { bg: string; border: string; text: strin
   discussion: { bg: "rgba(0,113,227,0.08)",   border: "rgba(0,113,227,0.3)",   text: "#0055b3" },
 };
 
-const FLAT_W = 118;
-const FLAT_H = 82;
+const FLAT_W = 124;
+const FLAT_H = 96;
 const COLS = 2;
 const GAP = 12;
 
@@ -54,11 +60,32 @@ export default function FloorPlan({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
         {(["available", "sold", "reserved", "discussion"] as FlatStatus[]).map((s) => (
           <StatusBadge key={s} status={s} size="sm" />
         ))}
       </div>
+
+      {/* Floor summary strip */}
+      {floorFlats.length > 0 && (() => {
+        const avail = floorFlats.filter(f => f.status === "available").length;
+        const sold = floorFlats.filter(f => f.status === "sold").length;
+        const res = floorFlats.filter(f => f.status === "reserved").length;
+        const prices = floorFlats.filter(f => f.total_price > 0).map(f => f.total_price);
+        const minP = prices.length ? Math.min(...prices) : 0;
+        const maxP = prices.length ? Math.max(...prices) : 0;
+        return (
+          <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard overflow-x-auto" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", scrollbarWidth: "none", flexShrink: 0, minHeight: 36 }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f", whiteSpace: "nowrap" }}>Floor {floor}</span>
+            <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
+            {avail > 0 && <span style={{ fontSize: "0.75rem", color: "#1a7f4a", fontWeight: 600, whiteSpace: "nowrap" }}>{avail} Available</span>}
+            {sold > 0 && <span style={{ fontSize: "0.75rem", color: "#d70015", fontWeight: 600, whiteSpace: "nowrap" }}>{sold} Sold</span>}
+            {res > 0 && <span style={{ fontSize: "0.75rem", color: "#c25000", fontWeight: 600, whiteSpace: "nowrap" }}>{res} Reserved</span>}
+            <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
+            <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.45)", whiteSpace: "nowrap", fontStyle: "italic" }}>Price on request</span>
+          </div>
+        );
+      })()}
 
       {/* Floor grid */}
       <div className="flex-1 overflow-auto">
@@ -138,6 +165,9 @@ export default function FloorPlan({
                       </div>
                       <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.42)", marginTop: 2 }}>
                         {flat.carpet_area_sqft} sq.ft
+                      </div>
+                      <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: s.text, marginTop: 3 }}>
+                        On Request
                       </div>
                       {flat.facing && (
                         <div

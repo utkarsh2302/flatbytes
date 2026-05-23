@@ -1013,8 +1013,8 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     <div className="relative w-full h-full">
       <div ref={mountRef} className="w-full h-full" style={{ cursor: 'grab' }} />
 
-      {/* Room navigation — top-left */}
-      <div className="absolute top-3 left-3 flex flex-col gap-1.5" style={{ maxWidth: 180 }}>
+      {/* Room navigation — top-left (desktop only) */}
+      <div className="hidden sm:flex absolute top-3 left-3 flex-col gap-1.5" style={{ maxWidth: 180 }}>
         <button
           onClick={() => setOverviewRef.current?.()}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
@@ -1050,8 +1050,48 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         })}
       </div>
 
+      {/* Room navigation — bottom horizontal strip (mobile only) */}
+      <div
+        className="sm:hidden absolute left-0 right-0 flex items-center gap-1.5 px-3 overflow-x-auto"
+        style={{ bottom: 44, scrollbarWidth: 'none', paddingBottom: 6 }}
+      >
+        <button
+          onClick={() => setOverviewRef.current?.()}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+          style={
+            camMode === 'overview'
+              ? { background: '#0071e3', color: '#fff' }
+              : { background: 'rgba(20,20,30,0.82)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }
+          }
+        >
+          ⌂ Overview
+        </button>
+        {layout.map((r) => {
+          const isActive = activeRoom === r.id
+          const rating = liveMode === 'vastu' ? vastuForRoomKind(r.kind, data.vastuRooms) : null
+          return (
+            <button
+              key={r.id}
+              onClick={() => goToRef.current?.(r.id)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap"
+              style={
+                isActive
+                  ? { background: '#1d1d1f', color: '#fff' }
+                  : { background: 'rgba(20,20,30,0.82)', color: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }
+              }
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ background: rating ? VASTU_CSS[rating] : '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
+              />
+              {r.name}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Time + facing card — top-right */}
-      <div className="absolute top-3 right-3 flex flex-col items-end gap-2" style={{ maxWidth: 240 }}>
+      <div className="absolute top-3 right-3 flex flex-col items-end gap-2" style={{ maxWidth: 'min(240px, calc(100vw - 16px))' }}>
         <div
           className="rounded-2xl px-3.5 py-2.5"
           style={{ background: 'rgba(13,17,23,0.78)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)' }}
@@ -1122,7 +1162,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-2xl px-4 py-2.5"
           style={{
-            bottom: 56, background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(20px)',
+            bottom: 'clamp(56px, 9.5vh, 88px)', background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
             display: 'flex', alignItems: 'center', gap: 12, maxWidth: 'calc(100vw - 32px)',
           }}
@@ -1157,10 +1197,13 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full pointer-events-none whitespace-nowrap"
         style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
       >
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
+        <span className="hidden sm:inline" style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
           {camMode === 'overview'
-            ? 'Drag to orbit · scroll to zoom · pick a room to step inside · scrub time to watch the sun move'
-            : 'Drag to look · WASD / scroll to walk · scrub time to see how light fills this room'}
+            ? 'Drag to orbit · scroll to zoom · tap a room to step inside · scrub time to move the sun'
+            : 'Drag to look · WASD to walk · scrub time to see how light changes'}
+        </span>
+        <span className="sm:hidden" style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
+          {camMode === 'overview' ? 'Drag to orbit · tap a room to enter' : 'Drag to look · pinch to move'}
         </span>
       </div>
     </div>

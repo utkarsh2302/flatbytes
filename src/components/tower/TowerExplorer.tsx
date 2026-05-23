@@ -338,7 +338,8 @@ export default function TowerExplorer({
       {/* Hint */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-blue-400 text-xs flex items-center gap-1.5 pointer-events-none">
         <span className="w-4 h-4 border border-blue-600 rounded flex items-center justify-center text-[9px]">↔</span>
-        Drag to rotate · Click a floor to explore flats
+        <span className="hidden sm:inline">Drag to rotate · Click a floor to explore flats</span>
+        <span className="sm:hidden">Drag to rotate · Tap a floor to explore</span>
       </div>
 
       {/* Floor indicator */}

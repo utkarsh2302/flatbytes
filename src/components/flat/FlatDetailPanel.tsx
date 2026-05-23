@@ -134,8 +134,8 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
           {
             icon: null,
             label: "Total Price",
-            value: formatPrice(flat.total_price),
-            sub: flat.price_per_sqft ? `₹${Math.round(flat.price_per_sqft).toLocaleString("en-IN")}/sq.ft` : "—",
+            value: "On Request",
+            sub: "Contact for pricing",
           },
         ].map((item) => (
           <div key={item.label} className="rounded-standard p-3.5" style={{ background: "#f5f5f7" }}>
@@ -148,83 +148,18 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
         ))}
       </div>
 
-      {/* EMI Calculator */}
-      <div className="mx-5 mb-3 rounded-standard overflow-hidden" style={{ border: "1px solid rgba(0,113,227,0.2)", background: "rgba(0,113,227,0.03)" }}>
+      {/* Price on request strip */}
+      <div className="mx-5 mb-3 rounded-standard px-4 py-3 flex items-center gap-3" style={{ background: "rgba(0,113,227,0.06)", border: "1px solid rgba(0,113,227,0.18)" }}>
+        <div className="flex-1">
+          <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.48)", marginBottom: 2 }}>Pricing</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
+        </div>
         <button
-          onClick={() => setShowEmi(!showEmi)}
-          className="w-full flex items-center justify-between px-4 py-3"
-          style={{ background: "transparent", border: "none", cursor: "pointer" }}
+          onClick={() => setShowLeadForm(true)}
+          style={{ padding: "7px 14px", borderRadius: 8, background: "#0071e3", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600, whiteSpace: "nowrap" }}
         >
-          <div>
-            <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.48)", marginBottom: 2 }}>EMI estimate · {tenure}yr @ {rate}%</div>
-            <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0071e3" }}>
-              ₹{emi.toLocaleString("en-IN")}<span style={{ fontSize: "0.8125rem", fontWeight: 400, color: "rgba(0,0,0,0.48)" }}>/month</span>
-            </div>
-          </div>
-          {showEmi ? <ChevronUp className="w-4 h-4" style={{ color: "rgba(0,0,0,0.4)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "rgba(0,0,0,0.4)" }} />}
+          Get Price
         </button>
-
-        {showEmi && (
-          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(0,113,227,0.15)" }}>
-            <div className="space-y-4 pt-3">
-              {/* Loan % slider */}
-              <div>
-                <div className="flex justify-between mb-1.5" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.56)" }}>
-                  <span>Loan Amount</span>
-                  <span style={{ fontWeight: 600, color: "#1d1d1f" }}>{loanPct}% · {formatPrice(loanAmount)}</span>
-                </div>
-                <input type="range" min={10} max={90} step={5} value={loanPct}
-                  onChange={(e) => setLoanPct(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "#0071e3" }} />
-              </div>
-
-              {/* Rate slider */}
-              <div>
-                <div className="flex justify-between mb-1.5" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.56)" }}>
-                  <span>Interest Rate</span>
-                  <span style={{ fontWeight: 600, color: "#1d1d1f" }}>{rate}% p.a.</span>
-                </div>
-                <input type="range" min={6} max={14} step={0.25} value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "#0071e3" }} />
-              </div>
-
-              {/* Tenure selector */}
-              <div>
-                <div className="mb-1.5" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.56)" }}>Tenure</div>
-                <div className="flex gap-2">
-                  {[10, 15, 20, 25, 30].map((t) => (
-                    <button key={t} onClick={() => setTenure(t)}
-                      style={{
-                        flex: 1, padding: "6px 0", borderRadius: 8, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
-                        background: tenure === t ? "#0071e3" : "#ebebed",
-                        color: tenure === t ? "#fff" : "#1d1d1f",
-                        border: "none",
-                      }}>
-                      {t}yr
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Summary */}
-              <div className="flex gap-2 pt-1">
-                <div className="flex-1 rounded-standard p-2.5 text-center" style={{ background: "rgba(52,199,89,0.08)" }}>
-                  <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.48)", marginBottom: 2 }}>Monthly EMI</div>
-                  <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#1a7f4a" }}>₹{emi.toLocaleString("en-IN")}</div>
-                </div>
-                <div className="flex-1 rounded-standard p-2.5 text-center" style={{ background: "rgba(255,149,0,0.08)" }}>
-                  <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.48)", marginBottom: 2 }}>Total Interest</div>
-                  <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#b35a00" }}>{formatPrice(interest)}</div>
-                </div>
-                <div className="flex-1 rounded-standard p-2.5 text-center" style={{ background: "#f5f5f7" }}>
-                  <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.48)", marginBottom: 2 }}>Total Payable</div>
-                  <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#1d1d1f" }}>{formatPrice(totalPayable)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Compare + Tour */}
@@ -284,30 +219,20 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
         </div>
       )}
 
-      {/* Price breakdown */}
-      <div className="p-5 mt-4" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-          Price Breakdown
+      {/* What's included */}
+      <div className="p-5 mt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
+        <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          Included in Price
         </div>
         <div className="space-y-2">
-          {[
-            ["Base Price", formatPrice(Math.round(flat.total_price * 0.88))],
-            ["Car Parking", "₹3,50,000"],
-            ["Club Membership", "₹75,000"],
-            ["PLC / Preferential", `₹${Math.round(flat.carpet_area_sqft * 48).toLocaleString("en-IN")}`],
-            ["GST (5%)", formatPrice(Math.round(flat.total_price * 0.05))],
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between" style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.56)" }}>
-              <span>{k}</span>
-              <span style={{ color: "#1d1d1f" }}>{v}</span>
+          {["Covered Car Parking", "Club Membership", "Modular Kitchen Provision", "Branded Fittings & Fixtures", "RERA-compliant pricing"].map((item) => (
+            <div key={item} className="flex items-center gap-2" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.64)" }}>
+              <span style={{ color: "#34c759", fontSize: "0.75rem" }}>✓</span>
+              {item}
             </div>
           ))}
-          <div
-            className="flex justify-between pt-2"
-            style={{ borderTop: "1.5px solid rgba(0,0,0,0.1)", fontSize: "0.9375rem", fontWeight: 700, color: "#1d1d1f" }}
-          >
-            <span>All-in Price</span>
-            <span style={{ color: "#0071e3" }}>{formatPrice(flat.total_price)}</span>
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(0,0,0,0.06)", fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", fontStyle: "italic" }}>
+            GST, stamp duty & registration charges extra. Get exact cost sheet from our team.
           </div>
         </div>
       </div>

@@ -108,7 +108,7 @@ export const STATUS_LABELS: Record<FlatStatus, string> = {
   sold: "Sold",
   reserved: "Reserved",
   held: "Held",
-  discussion: "Under Discussion",
+  discussion: "In Discussion",
 };
 
 export const STATUS_COLORS: Record<FlatStatus, string> = {

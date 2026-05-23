@@ -19,7 +19,7 @@ export default function StatusBadge({ status, size = "md" }: Props) {
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-pill font-normal",
+        "inline-flex items-center gap-1 rounded-pill font-normal whitespace-nowrap shrink-0",
         statusClass[status],
         size === "sm" ? "px-2 py-0.5 text-micro" : "px-2.5 py-1 text-caption"
       )}

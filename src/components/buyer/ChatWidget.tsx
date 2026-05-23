@@ -97,11 +97,11 @@ export default function ChatWidget({ projectId, projectName }: Props) {
         aria-label="Chat with us"
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-        {!open && messages.length === 0 && (
+        {!open && (
           <span
-            className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold"
-            style={{ background: "#ff3b30", color: "#fff" }}
-          >1</span>
+            className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white"
+            style={{ background: "#34c759" }}
+          />
         )}
       </button>
 

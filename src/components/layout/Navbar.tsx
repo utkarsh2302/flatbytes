@@ -10,7 +10,6 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const links = [
   { label: "Projects", href: "/projects" },
-  { label: "3D Explorer", href: "/projects" },
   { label: "EMI Calc", href: "/emi-calculator" },
   { label: "Admin", href: "/admin" },
 ];
@@ -72,7 +71,7 @@ export default function Navbar() {
               const active = pathname === l.href || pathname.startsWith(l.href + "/");
               return (
                 <Link
-                  key={l.href}
+                  key={l.label}
                   href={l.href}
                   className={clsx(
                     "px-3 py-1 rounded-standard text-micro font-normal transition-colors",
@@ -144,7 +143,7 @@ export default function Navbar() {
         <div className="md:hidden nav-glass border-t border-white/10 px-4 py-3 flex flex-col gap-1">
           {links.map((l) => (
             <Link
-              key={l.href}
+              key={l.label}
               href={l.href}
               onClick={() => setOpen(false)}
               className={clsx(
