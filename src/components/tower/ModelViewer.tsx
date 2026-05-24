@@ -359,29 +359,8 @@ export default function ModelViewer({
     const scene = new THREE.Scene()
 
     if (isGLB) {
-      // Physically-based sky (Preetham/Hosek-Wilkie atmospheric scattering model).
-      // Creates realistic blue sky with visible sun disc, horizon haze, Mie glow.
-      const sky = new Sky()
-      sky.scale.setScalar(1000)
-      scene.add(sky)
-      const skyU = (sky.material as THREE.ShaderMaterial).uniforms
-      skyU['turbidity'].value      = 4.0   // city haze — higher = hazier
-      skyU['rayleigh'].value       = 1.4   // blue sky scattering
-      skyU['mieCoefficient'].value = 0.006 // aerosol scattering (sun glow size)
-      skyU['mieDirectionalG'].value= 0.84  // sun disc sharpness
-
-      // Sun at ~40° elevation, slightly south-west — afternoon city light
-      const SUN_ELEVATION = 42  // degrees above horizon
-      const SUN_AZIMUTH   = 195 // degrees (south-west)
-      const sunVec = new THREE.Vector3()
-      sunVec.setFromSphericalCoords(
-        1,
-        THREE.MathUtils.degToRad(90 - SUN_ELEVATION),
-        THREE.MathUtils.degToRad(SUN_AZIMUTH)
-      )
-      skyU['sunPosition'].value.copy(sunVec)
-
-      scene.fog = new THREE.FogExp2(0xc8dff0, 0.0006)
+      scene.background = new THREE.Color(0xe8f2fa)
+      scene.fog = new THREE.FogExp2(0xe0ecf5, 0.0006)
     } else {
       scene.background = new THREE.Color(skyColor)
       scene.fog = new THREE.Fog(skyColor, 200, 500)
@@ -415,13 +394,7 @@ export default function ModelViewer({
       // Total illumination kept low (~2.5) so ACES tone mapping preserves material colours.
       scene.add(new THREE.AmbientLight(0xfff8f2, 0.45))
       sun = new THREE.DirectionalLight(0xfff4d0, 2.2)
-      // Match directional light to sky sun (elevation 42°, azimuth 195°)
-      const SUN_EL = 42, SUN_AZ = 195
-      sun.position.setFromSphericalCoords(
-        150,
-        THREE.MathUtils.degToRad(90 - SUN_EL),
-        THREE.MathUtils.degToRad(SUN_AZ)
-      )
+      sun.position.set(60, 120, -70)
       sun.castShadow = true
       sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
       sun.shadow.camera.near = 1; sun.shadow.camera.far = 700
