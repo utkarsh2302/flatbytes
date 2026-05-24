@@ -95,14 +95,32 @@ export default function ProjectExplorer({ project }: Props) {
     } catch {}
   }, [selectedFlat, project.id]);
 
-  // Load recently viewed on mount
+  // Load recently viewed on mount + save this project visit
   useEffect(() => {
     const key = "flatbytes_recently_viewed_" + project.id;
     try {
       const stored = JSON.parse(localStorage.getItem(key) ?? "[]");
       setRecentlyViewed(stored);
     } catch {}
-  }, [project.id]);
+
+    // Save project visit for home page "Continue Browsing" strip
+    try {
+      const projectsKey = "flatbytes_recent_projects";
+      const avail = project.towers.flatMap(t => t.flats).filter(f => f.status === "available").length;
+      const entry = {
+        id: project.id,
+        name: project.name,
+        location: project.location,
+        cover: project.cover_image_url ?? null,
+        available: avail,
+        ts: Date.now(),
+      };
+      const existing: typeof entry[] = JSON.parse(localStorage.getItem(projectsKey) ?? "[]");
+      const deduped = existing.filter(e => e.id !== project.id).slice(0, 4);
+      deduped.unshift(entry);
+      localStorage.setItem(projectsKey, JSON.stringify(deduped));
+    } catch {}
+  }, [project.id, project.name, project.location, project.cover_image_url, project.towers]);
 
   // Pre-populate BHK filter from URL (e.g. ?types=3bhk from search page)
   useEffect(() => {

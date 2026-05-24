@@ -3,6 +3,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import FlatFinder from "@/components/home/FlatFinder";
+import RecentProjects from "@/components/home/RecentProjects";
 import { getProjects } from "@/lib/data";
 import { getProjectStats } from "@/lib/types";
 import {
@@ -135,6 +136,8 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+        {/* Recently viewed projects — shows only after first project visit */}
+        <RecentProjects />
       </section>
 
       {/* ══ HOW IT WORKS (3 steps, super simple) ═════════════ */}

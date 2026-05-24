@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calculator, User, Grid3X3, Heart } from "lucide-react";
+import { Calculator, Search, Grid3X3, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function BottomNav() {
@@ -27,10 +27,10 @@ export default function BottomNav() {
   if (hide) return null;
 
   const navItems = [
-    { label: "Projects",  href: "/projects",      icon: Grid3X3,   badge: 0 },
+    { label: "Browse",    href: "/projects",      icon: Grid3X3,   badge: 0 },
+    { label: "Search",    href: "/search",        icon: Search,    badge: 0 },
+    { label: "Shortlist", href: "/shortlist",      icon: Heart,     badge: wishCount },
     { label: "EMI Calc",  href: "/emi-calculator", icon: Calculator, badge: 0 },
-    { label: "Shortlist", href: "/shortlist",       icon: Heart,     badge: wishCount },
-    { label: "Sign In",   href: "/login",           icon: User,      badge: 0 },
   ];
 
   return (
