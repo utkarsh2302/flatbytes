@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import type { Flat } from '@/lib/types'
 import {
   analyzeLivingExperience,
@@ -603,10 +605,12 @@ interface Props {
 export default function FlatInterior3D({ flat, isOffice = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
   const [activeRoom, setActiveRoom] = useState<string | null>(null)
-  const [camMode, setCamMode] = useState<'walk' | 'overview'>('overview')
+  const [camMode, setCamMode] = useState<'walk' | 'overview'>('walk')
   const [time, setTime] = useState(10) // 10 AM by default — warm morning light
   const [liveMode, setLiveMode] = useState<LiveMode>('sunlight')
   const [playing, setPlaying] = useState(false)
+  const [hintDismissed, setHintDismissed] = useState(false)
+  const [glbLoading, setGlbLoading] = useState(isOffice)
 
   const layout = useMemo(
     () => (isOffice || /office/.test(flat.flat_type) ? getOfficeLayout(flat.flat_type) : getLayout(flat.flat_type)),
@@ -633,6 +637,166 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
   useEffect(() => {
     if (!mountRef.current) return
     const mount = mountRef.current
+
+    // ── Office units: load real 3D model ────────────────────────────────────
+    if (isOffice) {
+      const W = mount.clientWidth, H = mount.clientHeight
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0xeaf0f5)
+
+      const camera = new THREE.PerspectiveCamera(72, W / H, 0.05, 200)
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setSize(W, H)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.toneMapping = THREE.ACESFilmicToneMapping
+      renderer.toneMappingExposure = 0.88
+      renderer.outputColorSpace = THREE.SRGBColorSpace
+      mount.appendChild(renderer.domElement)
+
+      scene.add(new THREE.AmbientLight(0xffffff, 1.4))
+      const sun = new THREE.DirectionalLight(0xfff4e0, 1.2)
+      sun.position.set(15, 30, 10)
+      scene.add(sun)
+      scene.add(new THREE.HemisphereLight(0x9ec8e0, 0xd4c8a0, 0.5))
+
+      const walk = { x: 0, z: 2, yaw: Math.PI, pitch: 0 }
+      let boxHalfW = 8, boxHalfD = 8, loaded = false
+
+      const applyWalk = () => {
+        const dx = Math.cos(walk.pitch) * Math.sin(walk.yaw)
+        const dy = Math.sin(walk.pitch)
+        const dz = Math.cos(walk.pitch) * Math.cos(walk.yaw)
+        camera.position.set(walk.x, 1.68, walk.z)
+        camera.lookAt(walk.x + dx, 1.68 + dy, walk.z + dz)
+      }
+      applyWalk()
+
+      const gltfLoader = new GLTFLoader()
+      gltfLoader.setMeshoptDecoder(MeshoptDecoder)
+
+      gltfLoader.load('/models/office-interior.glb', (gltf) => {
+        const model = gltf.scene
+        const box = new THREE.Box3().setFromObject(model)
+        const center = box.getCenter(new THREE.Vector3())
+        const size = box.getSize(new THREE.Vector3())
+        model.position.x -= center.x
+        model.position.z -= center.z
+        model.position.y -= box.min.y
+        scene.add(model)
+        boxHalfW = size.x / 2 - 0.5
+        boxHalfD = size.z / 2 - 0.5
+        walk.x = 0; walk.z = size.z * 0.15; walk.yaw = Math.PI; walk.pitch = 0
+        applyWalk()
+        loaded = true
+        setCamMode('walk')
+        setGlbLoading(false)
+      }, undefined, (err) => { console.error('Office GLB error', err); setGlbLoading(false) })
+
+      let isDown = false, lastX = 0, lastY = 0
+      const keys = new Set<string>()
+
+      const onDown = (e: MouseEvent) => {
+        isDown = true; lastX = e.clientX; lastY = e.clientY
+        mount.style.cursor = 'grabbing'; setHintDismissed(true)
+      }
+      const onMove = (e: MouseEvent) => {
+        if (!isDown) return
+        walk.yaw -= (e.clientX - lastX) * 0.005
+        walk.pitch = Math.max(-0.7, Math.min(0.7, walk.pitch - (e.clientY - lastY) * 0.005))
+        lastX = e.clientX; lastY = e.clientY; applyWalk()
+      }
+      const onUp = () => { isDown = false; mount.style.cursor = 'grab' }
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        const fx = Math.sin(walk.yaw), fz = Math.cos(walk.yaw)
+        const step = -e.deltaY * 0.005
+        walk.x = Math.max(-boxHalfW, Math.min(boxHalfW, walk.x + fx * step))
+        walk.z = Math.max(-boxHalfD, Math.min(boxHalfD, walk.z + fz * step))
+        applyWalk()
+      }
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) {
+          keys.add(e.key.toLowerCase()); e.preventDefault()
+        }
+      }
+      const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase())
+
+      let tLX = 0, tLY = 0
+      const onTouchStart = (e: TouchEvent) => {
+        isDown = true; tLX = e.touches[0].clientX; tLY = e.touches[0].clientY; setHintDismissed(true)
+      }
+      const onTouchMove = (e: TouchEvent) => {
+        e.preventDefault()
+        if (!isDown) return
+        walk.yaw -= (e.touches[0].clientX - tLX) * 0.006
+        walk.pitch = Math.max(-0.7, Math.min(0.7, walk.pitch - (e.touches[0].clientY - tLY) * 0.006))
+        tLX = e.touches[0].clientX; tLY = e.touches[0].clientY; applyWalk()
+      }
+      const onTouchEnd = () => { isDown = false }
+      const onResize = () => {
+        camera.aspect = mount.clientWidth / mount.clientHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(mount.clientWidth, mount.clientHeight)
+      }
+
+      mount.addEventListener('mousedown', onDown)
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+      mount.addEventListener('wheel', onWheel, { passive: false })
+      window.addEventListener('keydown', onKeyDown)
+      window.addEventListener('keyup', onKeyUp)
+      mount.addEventListener('touchstart', onTouchStart, { passive: false })
+      mount.addEventListener('touchmove', onTouchMove, { passive: false })
+      mount.addEventListener('touchend', onTouchEnd)
+      window.addEventListener('resize', onResize)
+
+      let animId = 0
+      const animate = () => {
+        animId = requestAnimationFrame(animate)
+        if (loaded && keys.size > 0) {
+          const fx = Math.sin(walk.yaw), fz = Math.cos(walk.yaw)
+          const sx = Math.cos(walk.yaw), sz = -Math.sin(walk.yaw)
+          const sp = 0.06
+          if (keys.has('w') || keys.has('arrowup')) {
+            walk.x = Math.max(-boxHalfW, Math.min(boxHalfW, walk.x + fx * sp))
+            walk.z = Math.max(-boxHalfD, Math.min(boxHalfD, walk.z + fz * sp))
+          }
+          if (keys.has('s') || keys.has('arrowdown')) {
+            walk.x = Math.max(-boxHalfW, Math.min(boxHalfW, walk.x - fx * sp))
+            walk.z = Math.max(-boxHalfD, Math.min(boxHalfD, walk.z - fz * sp))
+          }
+          if (keys.has('d') || keys.has('arrowright')) {
+            walk.x = Math.max(-boxHalfW, Math.min(boxHalfW, walk.x + sx * sp))
+            walk.z = Math.max(-boxHalfD, Math.min(boxHalfD, walk.z + sz * sp))
+          }
+          if (keys.has('a') || keys.has('arrowleft')) {
+            walk.x = Math.max(-boxHalfW, Math.min(boxHalfW, walk.x - sx * sp))
+            walk.z = Math.max(-boxHalfD, Math.min(boxHalfD, walk.z - sz * sp))
+          }
+          applyWalk()
+        }
+        renderer.render(scene, camera)
+      }
+      animate()
+
+      return () => {
+        cancelAnimationFrame(animId)
+        mount.removeEventListener('mousedown', onDown)
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        mount.removeEventListener('wheel', onWheel)
+        window.removeEventListener('keydown', onKeyDown)
+        window.removeEventListener('keyup', onKeyUp)
+        mount.removeEventListener('touchstart', onTouchStart)
+        mount.removeEventListener('touchmove', onTouchMove)
+        mount.removeEventListener('touchend', onTouchEnd)
+        window.removeEventListener('resize', onResize)
+        renderer.dispose()
+        if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
+      }
+    }
+
+    // ── Residential units: procedural geometry ───────────────────────────────
     const W = mount.clientWidth, H = mount.clientHeight
 
     let cMinX = Infinity, cMinZ = Infinity, cMaxX = -Infinity, cMaxZ = -Infinity
@@ -652,7 +816,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     sceneRef.current = scene
     fogRef.current = sceneFog
 
-    const camera = new THREE.PerspectiveCamera(55, W / H, 0.05, 300)
+    const camera = new THREE.PerspectiveCamera(72, W / H, 0.05, 300)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(W, H)
@@ -725,6 +889,22 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     buildWalls(scene, layout)
     for (const r of layout) furnishRoom(scene, r)
 
+    // Ceiling panels + light fixtures
+    const ceilMat = new THREE.MeshStandardMaterial({ color: 0xf2ede8, roughness: 0.92, side: THREE.DoubleSide })
+    for (const r of layout) {
+      if (r.kind === 'balcony') continue
+      const ceil = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.02, 0.06, r.d - 0.02), ceilMat)
+      ceil.position.set(r.x + r.w / 2, WALL_H - 0.03, r.z + r.d / 2)
+      scene.add(ceil)
+      // Glowing ceiling light disc
+      const disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfffae8 })
+      )
+      disc.position.set(r.x + r.w / 2, WALL_H - 0.04, r.z + r.d / 2)
+      scene.add(disc)
+    }
+
     // ── Camera control ──────────────────────────────────────────────────────
     const camPos = new THREE.Vector3()
     const camLook = new THREE.Vector3()
@@ -734,7 +914,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     // walk state
     const walk = { x: apCx, z: apCz, yaw: 0, pitch: -0.05 }
     // overview state
-    const orbit = { theta: -Math.PI / 4, phi: 0.62, radius: Math.max(apW, apD) * 1.5 }
+    const orbit = { theta: -Math.PI / 4, phi: 0.22, radius: Math.max(apW, apD) * 1.55 }
     let curMode: 'walk' | 'overview' = 'overview'
 
     function applyOverview() {
@@ -747,13 +927,23 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       tgtLook.set(apCx, 1, apCz)
     }
     function applyWalk() {
-      tgtPos.set(walk.x, 1.6, walk.z)
+      tgtPos.set(walk.x, 1.68, walk.z)
       const dx = Math.cos(walk.pitch) * Math.sin(walk.yaw)
       const dy = Math.sin(walk.pitch)
       const dz = Math.cos(walk.pitch) * Math.cos(walk.yaw)
-      tgtLook.set(walk.x + dx, 1.6 + dy, walk.z + dz)
+      tgtLook.set(walk.x + dx, 1.68 + dy, walk.z + dz)
     }
-    applyOverview()
+    // Start immersive: eye-level inside the living room facing inward
+    const startRoom = layout.find((r) => r.id === 'living') ?? layout[0]
+    curMode = 'walk'
+    const srCx = startRoom.x + startRoom.w / 2
+    const srCz = startRoom.z + startRoom.d / 2
+    walk.x = srCx
+    walk.z = srCz + startRoom.d * 0.22
+    walk.yaw = Math.PI
+    walk.pitch = 0
+    applyWalk()
+    setActiveRoom(startRoom.id)
     camPos.copy(tgtPos); camLook.copy(tgtLook)
 
     function goToRoom(roomId: string) {
@@ -770,7 +960,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       walk.x = rcx - dirx * back
       walk.z = rcz - dirz * back
       walk.yaw = Math.atan2(rcx - walk.x, rcz - walk.z)
-      walk.pitch = -0.05
+      walk.pitch = -0.08
       applyWalk()
     }
     function goOverview() {
@@ -789,6 +979,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     const onDown = (e: MouseEvent) => {
       isDown = true; lastX = downX = e.clientX; lastY = downY = e.clientY
       mount.style.cursor = 'grabbing'
+      setHintDismissed(true)
     }
     const onMove = (e: MouseEvent) => {
       if (!isDown) return
@@ -796,7 +987,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       lastX = e.clientX; lastY = e.clientY
       if (curMode === 'overview') {
         orbit.theta -= dx * 0.006
-        orbit.phi = Math.max(0.15, Math.min(1.35, orbit.phi - dy * 0.006))
+        orbit.phi = Math.max(0.05, Math.min(0.75, orbit.phi - dy * 0.006))
         applyOverview()
       } else {
         walk.yaw -= dx * 0.005
@@ -829,6 +1020,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     // touch
     let touchDownX = 0, touchDownY = 0, lastTouchDist = 0
     const onTouchStart = (e: TouchEvent) => {
+      setHintDismissed(true)
       if (e.touches.length === 2) {
         lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
       } else {
@@ -851,7 +1043,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         lastX = e.touches[0].clientX; lastY = e.touches[0].clientY
         if (curMode === 'overview') {
           orbit.theta -= dx * 0.007
-          orbit.phi = Math.max(0.15, Math.min(1.35, orbit.phi - dy * 0.007))
+          orbit.phi = Math.max(0.05, Math.min(0.75, orbit.phi - dy * 0.007))
           applyOverview()
         } else {
           walk.yaw -= dx * 0.006
@@ -999,6 +1191,13 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
     return () => clearInterval(id)
   }, [playing])
 
+  // Auto-dismiss "drag to look" hint after 3.5s
+  useEffect(() => {
+    if (hintDismissed) return
+    const t = setTimeout(() => setHintDismissed(true), 3500)
+    return () => clearTimeout(t)
+  }, [hintDismissed])
+
   const activeRoomData = activeRoom ? layout.find((r) => r.id === activeRoom) : null
   const activeVastu = activeRoomData ? vastuRoomFor(activeRoomData.kind, data.vastuRooms) : undefined
   const isNight = time < 5.5 || time > 19
@@ -1011,84 +1210,112 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mountRef} className="w-full h-full" style={{ cursor: 'grab' }} />
+      <div ref={mountRef} className="w-full h-full" style={{ cursor: glbLoading ? 'default' : 'grab' }} />
 
-      {/* Room navigation — top-left (desktop only) */}
-      <div className="hidden sm:flex absolute top-3 left-3 flex-col gap-1.5" style={{ maxWidth: 180 }}>
-        <button
-          onClick={() => setOverviewRef.current?.()}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-          style={
-            camMode === 'overview'
-              ? { background: '#0071e3', color: '#fff' }
-              : { background: 'rgba(255,255,255,0.92)', color: '#1d1d1f', backdropFilter: 'blur(8px)' }
-          }
-        >
-          <span style={{ fontSize: 13 }}>⌂</span> Dollhouse View
-        </button>
-        {layout.map((r) => {
-          const isActive = activeRoom === r.id
-          const rating = liveMode === 'vastu' ? vastuForRoomKind(r.kind, data.vastuRooms) : null
-          return (
-            <button
-              key={r.id}
-              onClick={() => goToRef.current?.(r.id)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-left"
-              style={
-                isActive
-                  ? { background: '#1d1d1f', color: '#fff' }
-                  : { background: 'rgba(255,255,255,0.85)', color: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }
-              }
-            >
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: rating ? VASTU_CSS[rating] : '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
-              />
-              {r.name}
-            </button>
-          )
-        })}
-      </div>
+      {/* GLB loading spinner — shown while office model downloads */}
+      {glbLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: '#0d1117' }}>
+          <div className="w-10 h-10 rounded-full border-2 animate-spin mb-4" style={{ borderColor: 'rgba(28,199,127,0.15)', borderTopColor: '#1cc77f' }} />
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>Loading 3D Interior…</p>
+          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>First load may take a moment</p>
+        </div>
+      )}
 
-      {/* Room navigation — bottom horizontal strip (mobile only) */}
-      <div
-        className="sm:hidden absolute left-0 right-0 flex items-center gap-1.5 px-3 overflow-x-auto"
-        style={{ bottom: 44, scrollbarWidth: 'none', paddingBottom: 6 }}
-      >
-        <button
-          onClick={() => setOverviewRef.current?.()}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-          style={
-            camMode === 'overview'
-              ? { background: '#0071e3', color: '#fff' }
-              : { background: 'rgba(20,20,30,0.82)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }
-          }
+      {/* "Drag to look around" hint — fades after first touch or 3.5s */}
+      {!hintDismissed && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+          style={{ transition: 'opacity 0.6s', opacity: 1 }}
         >
-          ⌂ Overview
-        </button>
-        {layout.map((r) => {
-          const isActive = activeRoom === r.id
-          const rating = liveMode === 'vastu' ? vastuForRoomKind(r.kind, data.vastuRooms) : null
-          return (
+          <div
+            className="flex items-center gap-2.5 px-5 py-3 rounded-2xl"
+            style={{
+              background: 'rgba(0,0,0,0.58)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff', fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 11V6a2 2 0 0 0-4 0v5M14 11V4a2 2 0 0 0-4 0v7M10 11V5a2 2 0 0 0-4 0v9l-1.5-1.5a1.5 1.5 0 0 0-2.1 2.1L6 19a6 6 0 0 0 12 0v-3a2 2 0 0 0-4 0" />
+            </svg>
+            Drag to look around
+          </div>
+          <div style={{ marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+            Tap a room below to teleport
+          </div>
+        </div>
+      )}
+
+      {/* ── Unified bottom nav: view toggle + room teleport ── */}
+      {!isOffice && (
+        <div
+          className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-2 px-4 pb-4 pt-10"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.18) 72%, transparent 100%)', pointerEvents: 'none' }}
+        >
+          {/* View toggle pill */}
+          <div
+            className="flex items-center rounded-2xl p-1 shrink-0"
+            style={{ background: 'rgba(18,18,28,0.82)', backdropFilter: 'blur(18px)', border: '1px solid rgba(255,255,255,0.15)', pointerEvents: 'auto' }}
+          >
             <button
-              key={r.id}
-              onClick={() => goToRef.current?.(r.id)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap"
-              style={
-                isActive
-                  ? { background: '#1d1d1f', color: '#fff' }
-                  : { background: 'rgba(20,20,30,0.82)', color: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }
-              }
+              onClick={() => {
+                const target = activeRoom ?? layout.find((r) => r.id === 'living')?.id ?? layout[0].id
+                goToRef.current?.(target)
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+              style={camMode === 'walk'
+                ? { background: '#fff', color: '#0a0a0a', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }}
             >
-              <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: rating ? VASTU_CSS[rating] : '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
-              />
-              {r.name}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <circle cx="12" cy="7" r="3"/><path d="M12 10v4M9 21l3-7 3 7"/>
+              </svg>
+              Walk
             </button>
-          )
-        })}
-      </div>
+            <button
+              onClick={() => setOverviewRef.current?.()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+              style={camMode === 'overview'
+                ? { background: '#fff', color: '#0a0a0a', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+              Dollhouse
+            </button>
+          </div>
+
+          {/* Room pills */}
+          <div
+            className="flex items-center gap-1.5 w-full overflow-x-auto"
+            style={{ scrollbarWidth: 'none', pointerEvents: 'auto', justifyContent: 'safe center' }}
+          >
+            {layout.map((r) => {
+              const isActive = activeRoom === r.id
+              const rating = liveMode === 'vastu' ? vastuForRoomKind(r.kind, data.vastuRooms) : null
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => goToRef.current?.(r.id)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
+                  style={isActive
+                    ? { background: 'rgba(255,255,255,0.96)', color: '#0a0a0a', boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }
+                    : { background: 'rgba(20,20,30,0.75)', color: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: rating ? VASTU_CSS[rating] : '#' + ROOM_TINT[r.kind].toString(16).padStart(6, '0') }}
+                  />
+                  {r.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Time + facing card — top-right */}
       <div className="absolute top-3 right-3 flex flex-col items-end gap-2" style={{ maxWidth: 'min(240px, calc(100vw - 16px))' }}>
@@ -1162,7 +1389,7 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-2xl px-4 py-2.5"
           style={{
-            bottom: 'clamp(56px, 9.5vh, 88px)', background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(20px)',
+            bottom: 'clamp(108px, 15vh, 130px)', background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
             display: 'flex', alignItems: 'center', gap: 12, maxWidth: 'calc(100vw - 32px)',
           }}
@@ -1192,20 +1419,15 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
         </div>
       )}
 
-      {/* Hint */}
-      <div
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full pointer-events-none whitespace-nowrap"
-        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
-      >
-        <span className="hidden sm:inline" style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
-          {camMode === 'overview'
-            ? 'Drag to orbit · scroll to zoom · tap a room to step inside · scrub time to move the sun'
-            : 'Drag to look · WASD to walk · scrub time to see how light changes'}
-        </span>
-        <span className="sm:hidden" style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>
-          {camMode === 'overview' ? 'Drag to orbit · tap a room to enter' : 'Drag to look · pinch to move'}
-        </span>
-      </div>
+      {/* Office hint */}
+      {isOffice && !hintDismissed && (
+        <div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full pointer-events-none whitespace-nowrap"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)' }}
+        >
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Drag to look · scroll to move</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import type { Project, Flat, Tower } from "@/lib/types";
 import { getProjectStats } from "@/lib/types";
@@ -19,7 +19,7 @@ import Image from "next/image";
 import {
   MapPin, Building2, SlidersHorizontal, Layers, Box, BarChart2, X,
   Shield, ChevronRight, ChevronLeft, Sparkles, Calendar, Maximize2,
-  CheckCircle2, ImageIcon,
+  CheckCircle2, ImageIcon, Heart, Clock, Navigation,
 } from "lucide-react";
 
 const ModelViewer = dynamic(() => import("@/components/tower/ModelViewer"), {
@@ -76,6 +76,32 @@ export default function ProjectExplorer({ project }: Props) {
     minPrice: 0, maxPrice: project.price_max ?? 60000000,
     facing: [],
   });
+  const [showAvailOnly, setShowAvailOnly] = useState(false);
+  const [flatSort, setFlatSort] = useState<"default" | "area_desc" | "area_asc" | "floor_desc">("default");
+  const [recentlyViewed, setRecentlyViewed] = useState<Array<{ flatId: string; flatNumber: string; flatType: string; floor: number }>>([]);
+
+  // Track recently viewed flat
+  useEffect(() => {
+    if (!selectedFlat) return;
+    const key = "flatbytes_recently_viewed_" + project.id;
+    try {
+      const existing: Array<{ flatId: string; flatNumber: string; flatType: string; floor: number }> =
+        JSON.parse(localStorage.getItem(key) ?? "[]");
+      const deduped = existing.filter((r) => r.flatId !== selectedFlat.id).slice(0, 7);
+      deduped.unshift({ flatId: selectedFlat.id, flatNumber: selectedFlat.flat_number, flatType: selectedFlat.flat_type, floor: selectedFlat.floor });
+      localStorage.setItem(key, JSON.stringify(deduped));
+      setRecentlyViewed(deduped);
+    } catch {}
+  }, [selectedFlat, project.id]);
+
+  // Load recently viewed on mount
+  useEffect(() => {
+    const key = "flatbytes_recently_viewed_" + project.id;
+    try {
+      const stored = JSON.parse(localStorage.getItem(key) ?? "[]");
+      setRecentlyViewed(stored);
+    } catch {}
+  }, [project.id]);
 
   const stats        = getProjectStats(project);
   const activeTower: Tower | undefined = project.towers[selectedTowerIdx];
@@ -84,11 +110,26 @@ export default function ProjectExplorer({ project }: Props) {
   const filterCount  = filters.flatType.length + filters.status.length + filters.facing.length;
 
   const currentFloor = selectedFloor ?? (activeTower?.total_floors ?? 1);
-  const floorFlats   = useMemo(
-    () => applyFilters(activeTower?.flats ?? [], filters).filter((f) => f.floor === currentFloor),
-    [activeTower, filters, currentFloor],
-  );
+  const floorFlats   = useMemo(() => {
+    let flats = applyFilters(activeTower?.flats ?? [], filters).filter((f) => f.floor === currentFloor);
+    if (showAvailOnly) flats = flats.filter((f) => f.status === "available");
+    if (flatSort === "area_desc") flats = [...flats].sort((a, b) => b.carpet_area_sqft - a.carpet_area_sqft);
+    else if (flatSort === "area_asc") flats = [...flats].sort((a, b) => a.carpet_area_sqft - b.carpet_area_sqft);
+    else if (flatSort === "floor_desc") flats = [...flats].sort((a, b) => b.floor - a.floor);
+    return flats;
+  }, [activeTower, filters, currentFloor, showAvailOnly, flatSort]);
   const totalFloors  = activeTower?.total_floors ?? project.total_floors ?? 24;
+
+  // Best Value: available flat with lowest price_per_sqft (or highest area as fallback)
+  const bestValueId = useMemo(() => {
+    const avail = (activeTower?.flats ?? []).filter((f) => f.floor === currentFloor && f.status === "available");
+    if (avail.length < 2) return null;
+    const hasPps = avail.some((f) => f.price_per_sqft !== null);
+    const sorted = hasPps
+      ? [...avail].sort((a, b) => (a.price_per_sqft ?? 99999) - (b.price_per_sqft ?? 99999))
+      : [...avail].sort((a, b) => b.carpet_area_sqft - a.carpet_area_sqft);
+    return sorted[0].id;
+  }, [activeTower, currentFloor]);
 
   const handleFloorSelect = (floor: number) => {
     setSelectedFloor(floor);
@@ -361,131 +402,296 @@ export default function ProjectExplorer({ project }: Props) {
           )}
 
           {/* ═══ FLOOR PLAN VIEW ════════════════════════════════════════ */}
-          {view === "floor" && (
-            <div className="w-full h-full flex overflow-hidden" style={{ background:"#f5f5f7" }}>
+          {view === "floor" && (() => {
+            const ST_BORDER: Record<string,string> = { available:"#34c759", sold:"#ff3b30", reserved:"#ff9500", held:"#af52de", discussion:"#007aff" };
+            const ST_TEXT:   Record<string,string> = { available:"#1a7f4a", sold:"#d70015",  reserved:"#c25000",  held:"#6c28d9", discussion:"#0055b3" };
+            const ST_BG:     Record<string,string> = { available:"rgba(52,199,89,0.06)", sold:"rgba(255,59,48,0.06)", reserved:"rgba(255,149,0,0.06)", held:"rgba(175,82,222,0.06)", discussion:"rgba(0,122,255,0.06)" };
+            const ST_LABEL:  Record<string,string> = { available:"Available", sold:"Sold", reserved:"Reserved", held:"Held", discussion:"In Discussion" };
+            return (
+            <div className="w-full h-full flex flex-col overflow-hidden" style={{ background:"#f5f5f7" }}>
 
-              {/* ── Left: Floor selector sidebar ── */}
-              <div className="shrink-0 flex flex-col overflow-hidden"
-                style={{ width:"clamp(56px,6vw,72px)", background:"#ffffff", borderRight:"1px solid rgba(0,0,0,0.08)" }}>
-                <div className="py-3 px-1 text-center shrink-0" style={{ fontSize:"0.6rem", fontWeight:700, color:"rgba(0,0,0,0.35)", textTransform:"uppercase", letterSpacing:"0.06em", borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
-                  Floor
-                </div>
-                <div className="flex-1 overflow-y-auto py-2" style={{ scrollbarWidth:"none" }}>
-                  {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
-                    const active = f === currentFloor;
-                    const hasFlats = (activeTower?.flats ?? []).some(fl => fl.floor === f);
-                    return (
-                      <button key={f} onClick={() => { setSelectedFloor(f); setSelectedFlat(null); }}
-                        className="w-full flex items-center justify-center transition-all"
-                        style={{
-                          height: 36,
-                          fontWeight: active ? 700 : 400,
-                          fontSize: "0.8125rem",
-                          color: active ? "#fff" : hasFlats ? "#1d1d1f" : "rgba(0,0,0,0.25)",
-                          background: active ? "#0071e3" : "transparent",
-                          cursor: hasFlats ? "pointer" : "default",
-                        }}>
-                        {f}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* ── Mobile horizontal floor strip ── */}
+              <div className="lg:hidden shrink-0 flex items-center gap-1.5 px-4 py-2.5 overflow-x-auto"
+                style={{ background:"#fff", borderBottom:"1px solid rgba(0,0,0,0.08)", scrollbarWidth:"none" }}>
+                <span className="shrink-0 text-xs font-semibold mr-1" style={{ color:"rgba(0,0,0,0.32)", letterSpacing:"0.04em" }}>FLOOR</span>
+                {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
+                  const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
+                  const hasAvail = fp.some(fl => fl.status === "available");
+                  const active = f === currentFloor;
+                  return (
+                    <button key={f}
+                      onClick={() => { setSelectedFloor(f); setSelectedFlat(null); }}
+                      className="shrink-0 flex flex-col items-center justify-center rounded-xl transition-all"
+                      style={{
+                        minWidth: 44, height: 52,
+                        background: active ? "#0071e3" : fp.length ? "#f5f5f7" : "transparent",
+                        color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
+                        fontWeight: active ? 700 : 500, fontSize: "0.875rem",
+                        border: active ? "none" : fp.length ? "1px solid rgba(0,0,0,0.09)" : "none",
+                      }}>
+                      {f}
+                      {!active && fp.length > 0 && (
+                        <div style={{ width:5, height:5, borderRadius:"50%", marginTop:3,
+                          background: hasAvail ? "#34c759" : "#ff9500" }}/>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* ── Right: Flat grid ── */}
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex min-h-0">
 
-                {/* Floor header bar */}
-                <div className="shrink-0 flex items-center gap-3 px-5 py-3 flex-wrap"
-                  style={{ background:"#ffffff", borderBottom:"1px solid rgba(0,0,0,0.08)", minHeight:48 }}>
-                  <span style={{ fontSize:"0.9375rem", fontWeight:700, color:"#1d1d1f" }}>Floor {currentFloor}</span>
-                  <div style={{ width:1, height:14, background:"rgba(0,0,0,0.1)" }}/>
-                  {floorFlats.length === 0
-                    ? <span style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.4)" }}>No units on this floor</span>
-                    : <>
-                        {floorAvail > 0 && <span style={{ fontSize:"0.8125rem", color:"#1a7f4a", fontWeight:600 }}>{floorAvail} Available</span>}
-                        {floorSold  > 0 && <span style={{ fontSize:"0.8125rem", color:"#d70015", fontWeight:600 }}>{floorSold} Sold</span>}
-                        {floorRes   > 0 && <span style={{ fontSize:"0.8125rem", color:"#c25000", fontWeight:600 }}>{floorRes} Reserved</span>}
-                        <div style={{ width:1, height:14, background:"rgba(0,0,0,0.1)" }}/>
-                        <span style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.42)", fontStyle:"italic" }}>Price on request</span>
-                      </>
-                  }
-                  {/* Tower selector */}
-                  {project.towers.length > 1 && (
-                    <div className="ml-auto flex items-center gap-1 rounded-comfortable p-0.5"
-                      style={{ background:"#f5f5f7" }}>
-                      {project.towers.map((t, i) => (
-                        <button key={t.id} onClick={() => { setSelectedTowerIdx(i); setSelectedFlat(null); }}
-                          className="px-3 py-1 rounded-standard text-micro transition-all"
-                          style={i === selectedTowerIdx
-                            ? { background:"#0071e3", color:"#fff" }
-                            : { background:"transparent", color:"rgba(0,0,0,0.56)" }}>
-                          {t.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Status legend */}
-                <div className="shrink-0 flex items-center gap-3 px-5 py-2.5 overflow-x-auto"
-                  style={{ background:"#fafafa", borderBottom:"1px solid rgba(0,0,0,0.06)", scrollbarWidth:"none" }}>
-                  {(["available","sold","reserved","discussion"] as const).map(s => (
-                    <StatusBadge key={s} status={s} size="sm"/>
-                  ))}
-                </div>
-
-                {/* Flat grid */}
-                <div className="flex-1 overflow-auto p-5 pb-24 lg:pb-6">
-                  {floorFlats.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color:"rgba(0,0,0,0.28)" }}>
-                      <Building2 className="w-12 h-12 opacity-20"/>
-                      <div className="text-center">
-                        <p style={{ fontSize:"0.9375rem", fontWeight:600, color:"rgba(0,0,0,0.36)" }}>No units on Floor {currentFloor}</p>
-                        <p style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.28)", marginTop:4 }}>Select another floor from the left</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid gap-3"
-                      style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", maxWidth:900 }}>
-                      {floorFlats.map(flat => {
-                        const s = STATUS_STYLE[flat.status] ?? STATUS_STYLE.available;
-                        const active = flat.id === selectedFlat?.id;
-                        return (
-                          <button key={flat.id} onClick={() => setSelectedFlat(flat)}
-                            className="relative text-left rounded-xl p-4 transition-all hover:scale-[1.02]"
-                            style={{
-                              background: active ? s.bg.replace("0.08","0.18") : s.bg,
-                              border: `1.5px solid ${active ? s.border.replace("0.3","0.7") : s.border}`,
-                              boxShadow: active ? `0 0 0 3px ${s.border}` : "none",
-                            }}>
-                            <div className="font-semibold mb-1.5" style={{ fontSize:"0.875rem", color:s.text }}>
-                              {flat.flat_number}
-                            </div>
-                            <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#1d1d1f" }}>
-                              {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()}
-                            </div>
-                            <div style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.48)", marginTop:2 }}>
-                              {flat.carpet_area_sqft} sq.ft
-                            </div>
-                            <div style={{ fontSize:"0.75rem", fontWeight:600, color:s.text, marginTop:4 }}>
-                              On Request
-                            </div>
-                            {flat.facing && (
-                              <span className="absolute bottom-3 right-3"
-                                style={{ fontSize:"0.6875rem", color:s.text, opacity:0.7 }}>
-                                {FACING_ARROW[flat.facing] ?? flat.facing[0]}
+                {/* ── Desktop floor sidebar ── */}
+                <div className="hidden lg:flex shrink-0 flex-col overflow-hidden"
+                  style={{ width:88, background:"#fff", borderRight:"1px solid rgba(0,0,0,0.08)" }}>
+                  <div className="py-3 text-center shrink-0"
+                    style={{ fontSize:"0.6rem", fontWeight:700, color:"rgba(0,0,0,0.32)", textTransform:"uppercase", letterSpacing:"0.08em", borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
+                    Floor
+                  </div>
+                  <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth:"none" }}>
+                    {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
+                      const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
+                      const avC = fp.filter(fl => fl.status === "available").length;
+                      const soC = fp.filter(fl => fl.status === "sold").length;
+                      const reC = fp.filter(fl => fl.status === "reserved").length;
+                      const active = f === currentFloor;
+                      const isHighFloor = f >= Math.ceil(totalFloors * 0.75);
+                      const isGroundLevel = f <= 2;
+                      const qualityTag = isHighFloor ? { label:"✦", title:"Premium Floor", color:"#c25000" }
+                        : isGroundLevel ? { label:"G", title:"Ground Level", color:"#1a7f4a" }
+                        : null;
+                      return (
+                        <button key={f}
+                          onClick={() => { setSelectedFloor(f); setSelectedFlat(null); }}
+                          className="w-full flex items-center justify-between px-3 transition-all group"
+                          style={{
+                            height:40, fontSize:"0.8125rem",
+                            fontWeight: active ? 700 : fp.length ? 500 : 400,
+                            color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
+                            background: active ? "#0071e3" : "transparent",
+                            cursor: fp.length ? "pointer" : "default",
+                          }}
+                          title={qualityTag?.title}>
+                          <span>{f}</span>
+                          <div className="flex items-center gap-0.5">
+                            {qualityTag && !active && (
+                              <span style={{ fontSize:"0.5rem", fontWeight:700, color: qualityTag.color, lineHeight:1 }}>
+                                {qualityTag.label}
                               </span>
                             )}
+                            {!active && fp.length > 0 && (
+                              <div className="flex gap-0.5">
+                                {avC > 0 && <div style={{ width:5, height:5, borderRadius:"50%", background:"#34c759" }}/>}
+                                {reC > 0 && <div style={{ width:5, height:5, borderRadius:"50%", background:"#ff9500" }}/>}
+                                {soC > 0 && <div style={{ width:5, height:5, borderRadius:"50%", background:"#ff3b30" }}/>}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Main content ── */}
+                <div className="flex-1 flex flex-col min-h-0">
+
+                  {/* Floor header */}
+                  <div className="shrink-0" style={{ background:"#fff", borderBottom:"1px solid rgba(0,0,0,0.08)" }}>
+                    {/* Title row */}
+                    <div className="flex items-center gap-3 px-5 py-3 flex-wrap" style={{ minHeight:52 }}>
+                      <span style={{ fontSize:"0.9375rem", fontWeight:700, color:"#1d1d1f" }}>Floor {currentFloor}</span>
+                      <div style={{ width:1, height:14, background:"rgba(0,0,0,0.1)", flexShrink:0 }}/>
+                      {(() => {
+                        const total = (activeTower?.flats ?? []).filter(f => f.floor === currentFloor);
+                        const av = total.filter(f => f.status === "available").length;
+                        const so = total.filter(f => f.status === "sold").length;
+                        const re = total.filter(f => f.status === "reserved").length;
+                        return total.length === 0
+                          ? <span style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.4)" }}>No units</span>
+                          : <div className="flex items-center gap-2 flex-wrap">
+                              {av > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background:"rgba(52,199,89,0.1)", color:"#1a7f4a", border:"1px solid rgba(52,199,89,0.25)" }}><span style={{ width:5,height:5,borderRadius:"50%",background:"#34c759",display:"inline-block" }}/>{av} Available</span>}
+                              {re > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background:"rgba(255,149,0,0.1)", color:"#c25000", border:"1px solid rgba(255,149,0,0.25)" }}>{re} Reserved</span>}
+                              {so > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background:"rgba(255,59,48,0.08)", color:"#d70015", border:"1px solid rgba(255,59,48,0.2)" }}>{so} Sold</span>}
+                            </div>;
+                      })()}
+                      {project.towers.length > 1 && (
+                        <div className="ml-auto flex items-center gap-1 rounded-comfortable p-0.5" style={{ background:"#f5f5f7" }}>
+                          {project.towers.map((t, i) => (
+                            <button key={t.id} onClick={() => { setSelectedTowerIdx(i); setSelectedFlat(null); }}
+                              className="px-3 py-1 rounded-standard text-micro transition-all"
+                              style={i === selectedTowerIdx ? { background:"#0071e3", color:"#fff" } : { background:"transparent", color:"rgba(0,0,0,0.56)" }}>
+                              {t.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Filter + sort strip */}
+                    <div className="flex items-center gap-2 px-5 pb-2.5 flex-wrap">
+                      {/* Available only toggle */}
+                      <button
+                        onClick={() => setShowAvailOnly(v => !v)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                        style={showAvailOnly
+                          ? { background:"rgba(52,199,89,0.12)", color:"#1a7f4a", border:"1.5px solid rgba(52,199,89,0.35)" }
+                          : { background:"#f5f5f7", color:"rgba(0,0,0,0.56)", border:"1.5px solid transparent" }}>
+                        <span style={{ width:6,height:6,borderRadius:"50%",background: showAvailOnly ? "#34c759" : "rgba(0,0,0,0.25)",display:"inline-block",flexShrink:0 }}/>
+                        Available Only
+                      </button>
+
+                      {/* Sort controls */}
+                      <div className="flex items-center gap-1 rounded-xl p-0.5" style={{ background:"#f5f5f7" }}>
+                        {([
+                          { id:"default"   as const, label:"Default" },
+                          { id:"area_desc" as const, label:"Largest" },
+                          { id:"area_asc"  as const, label:"Smallest" },
+                          { id:"floor_desc"as const, label:"High Floor" },
+                        ]).map(s => (
+                          <button key={s.id} onClick={() => setFlatSort(s.id)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+                            style={flatSort === s.id
+                              ? { background:"#fff", color:"#1d1d1f", boxShadow:"0 1px 3px rgba(0,0,0,0.1)" }
+                              : { background:"transparent", color:"rgba(0,0,0,0.48)" }}>
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recently viewed strip */}
+                  {recentlyViewed.length > 1 && (
+                    <div className="shrink-0 px-4 py-2 flex items-center gap-2 overflow-x-auto"
+                      style={{ background:"rgba(0,113,227,0.04)", borderBottom:"1px solid rgba(0,113,227,0.08)", scrollbarWidth:"none" }}>
+                      <span className="shrink-0 text-xs font-semibold flex items-center gap-1" style={{ color:"rgba(0,0,0,0.35)" }}>
+                        <Clock className="w-3 h-3"/> Recent
+                      </span>
+                      {recentlyViewed.slice(1, 7).map(rv => {
+                        const rvFlat = allFlats.find(f => f.id === rv.flatId);
+                        if (!rvFlat) return null;
+                        const rvSt = STATUS_STYLE[rvFlat.status] ?? STATUS_STYLE.available;
+                        return (
+                          <button key={rv.flatId}
+                            onClick={() => { setSelectedFloor(rv.floor); setSelectedFlat(rvFlat); }}
+                            className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-all"
+                            style={{ background:"#fff", color:"#1d1d1f", border:`1px solid ${rvSt.border}`, whiteSpace:"nowrap" }}>
+                            <span style={{ width:5, height:5, borderRadius:"50%", background:rvSt.border, display:"inline-block", flexShrink:0 }}/>
+                            {rv.flatNumber} · F{rv.floor}
                           </button>
                         );
                       })}
                     </div>
                   )}
+
+                  {/* Flat grid */}
+                  <div className="flex-1 overflow-auto p-4 sm:p-5 pb-28 lg:pb-6">
+                    {floorFlats.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+                        <div style={{ width:56, height:56, borderRadius:16, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <Building2 className="w-6 h-6" style={{ color:"rgba(0,0,0,0.2)" }}/>
+                        </div>
+                        <p style={{ fontSize:"0.9375rem", fontWeight:600, color:"rgba(0,0,0,0.35)" }}>
+                          {showAvailOnly ? "No available flats on this floor" : `No units on Floor ${currentFloor}`}
+                        </p>
+                        <p style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.25)" }}>
+                          {showAvailOnly ? "Try turning off 'Available Only' or pick another floor" : "Try a different floor"}
+                        </p>
+                        {showAvailOnly && (
+                          <button onClick={() => setShowAvailOnly(false)}
+                            className="px-4 py-2 rounded-xl text-sm font-semibold"
+                            style={{ background:"#f5f5f7", color:"#1d1d1f", border:"none", cursor:"pointer" }}>
+                            Show all statuses
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 sm:gap-4"
+                        style={{ gridTemplateColumns:"repeat(auto-fill, minmax(190px, 1fr))" }}>
+                        {floorFlats.map(flat => {
+                          const bc = ST_BORDER[flat.status] ?? "#e5e5ea";
+                          const bg = ST_BG[flat.status]     ?? "rgba(0,0,0,0.02)";
+                          const tc = ST_TEXT[flat.status]   ?? "rgba(0,0,0,0.45)";
+                          const active = flat.id === selectedFlat?.id;
+                          const isBestValue = flat.id === bestValueId;
+                          return (
+                            <button key={flat.id} onClick={() => setSelectedFlat(flat)}
+                              className="relative text-left rounded-2xl transition-all"
+                              style={{
+                                background: active ? bg.replace("0.06","0.14") : "#fff",
+                                borderTop: "1px solid rgba(0,0,0,0.07)",
+                                borderRight: "1px solid rgba(0,0,0,0.07)",
+                                borderBottom: "1px solid rgba(0,0,0,0.07)",
+                                borderLeft: `4px solid ${bc}`,
+                                boxShadow: active
+                                  ? `0 0 0 2px ${bc}55, 0 8px 24px rgba(0,0,0,0.1)`
+                                  : isBestValue ? "0 0 0 1.5px #34c75966, 0 4px 16px rgba(52,199,89,0.12)"
+                                  : "0 1px 4px rgba(0,0,0,0.05)",
+                                padding: "15px 15px 12px",
+                              }}>
+
+                              {/* Best Value badge */}
+                              {isBestValue && (
+                                <div className="absolute top-0 right-0 flex items-center gap-0.5 px-2 py-0.5 rounded-bl-xl rounded-tr-xl text-xs font-bold"
+                                  style={{ background:"linear-gradient(135deg,#34c759,#1a7f4a)", color:"#fff", fontSize:"0.625rem", letterSpacing:"0.02em" }}>
+                                  ★ BEST PICK
+                                </div>
+                              )}
+
+                              {/* Status row */}
+                              <div className="flex items-center justify-between mb-2.5">
+                                <div className="flex items-center gap-1.5">
+                                  <div style={{ width:6, height:6, borderRadius:"50%", background:bc, flexShrink:0 }}/>
+                                  <span style={{ fontSize:"0.6875rem", fontWeight:700, color:tc, letterSpacing:"0.01em" }}>
+                                    {ST_LABEL[flat.status] ?? flat.status}
+                                  </span>
+                                </div>
+                                {flat.facing && (
+                                  <span style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.38)", fontWeight:500 }}>
+                                    {FACING_ARROW[flat.facing] ?? flat.facing[0]}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Flat number */}
+                              <div style={{ fontSize:"1.25rem", fontWeight:800, color:"#1d1d1f", letterSpacing:"-0.02em", lineHeight:1 }}>
+                                {flat.flat_number}
+                              </div>
+
+                              {/* Type + area */}
+                              <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#3a3a3c", marginTop:6 }}>
+                                {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()}
+                              </div>
+                              <div style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.42)", marginTop:2 }}>
+                                {flat.carpet_area_sqft.toLocaleString()} sq.ft
+                              </div>
+
+                              <div style={{ height:1, background:"rgba(0,0,0,0.06)", margin:"11px 0 10px" }}/>
+
+                              {/* Action row */}
+                              <div className="flex items-center justify-between gap-2">
+                                <button
+                                  onClick={e => { e.stopPropagation(); setTourFlat(flat); }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                                  style={{ background:"rgba(0,113,227,0.08)", color:"#0071e3", border:"1px solid rgba(0,113,227,0.16)" }}
+                                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(0,113,227,0.16)"}
+                                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(0,113,227,0.08)"}>
+                                  <Box className="w-3 h-3"/> 3D Tour
+                                </button>
+                                <span style={{ fontSize:"0.6875rem", color:"rgba(0,0,0,0.32)", fontStyle:"italic" }}>On Request</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+          );
+          })()}
 
           {/* ═══ OVERVIEW / INFO ════════════════════════════════════════ */}
           {view === "overview" && (
@@ -516,6 +722,52 @@ export default function ProjectExplorer({ project }: Props) {
               )}
 
               <div className="p-5 pb-24 lg:pb-8 max-w-4xl mx-auto space-y-4">
+
+                {/* Possession countdown */}
+                {project.possession_date && (() => {
+                  const now = new Date();
+                  const poss = new Date(project.possession_date);
+                  const diffMs = poss.getTime() - now.getTime();
+                  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                  const months = Math.floor(Math.abs(diffDays) / 30);
+                  const isPast = diffDays <= 0;
+                  const urgency = !isPast && diffDays <= 180;
+                  return (
+                    <div className="rounded-2xl overflow-hidden"
+                      style={{ background: isPast ? "linear-gradient(135deg,#1a7f4a,#0a4d2a)" : urgency ? "linear-gradient(135deg,#c25000,#7c2d00)" : "linear-gradient(135deg,#0071e3,#0a3d6b)", boxShadow:"0 4px 20px rgba(0,0,0,0.12)" }}>
+                      <div className="p-5 flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <div style={{ fontSize:"0.6875rem", fontWeight:700, color:"rgba(255,255,255,0.6)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>
+                            {isPast ? "Possession Ready" : "Possession Countdown"}
+                          </div>
+                          <div style={{ fontSize:"1.75rem", fontWeight:800, color:"#fff", letterSpacing:"-0.03em", lineHeight:1 }}>
+                            {isPast ? "Ready to Move" : months > 0 ? `${months} months` : `${diffDays} days`}
+                          </div>
+                          <div style={{ fontSize:"0.8125rem", color:"rgba(255,255,255,0.65)", marginTop:4 }}>
+                            {isPast ? `Possession was ${poss.toLocaleDateString("en-IN",{month:"long",year:"numeric"})}` : `Target: ${poss.toLocaleDateString("en-IN",{month:"long",year:"numeric"})}`}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          {!isPast && (
+                            <>
+                              <div className="w-32 h-2 rounded-full" style={{ background:"rgba(255,255,255,0.2)" }}>
+                                <div className="h-full rounded-full" style={{ width:`${Math.min(100, Math.max(5, (project.construction_percentage ?? 70)))}%`, background:"rgba(255,255,255,0.85)" }}/>
+                              </div>
+                              <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.6)" }}>
+                                {project.construction_percentage ?? 70}% complete
+                              </div>
+                            </>
+                          )}
+                          {isPast && (
+                            <span className="px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background:"rgba(255,255,255,0.2)", color:"#fff" }}>
+                              ✓ OC Received
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Quick specs */}
                 <div className="apple-card p-5">
@@ -594,6 +846,33 @@ export default function ProjectExplorer({ project }: Props) {
                   <ConstructionTracker milestones={project.construction_milestones}
                     overallPercentage={project.construction_percentage ?? 0}/>
                 )}
+
+                {/* Neighborhood quick facts */}
+                <div className="apple-card p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Navigation className="w-4 h-4" style={{ color:"#0071e3" }}/>
+                    <h2 className="text-tile" style={{ color:"#1d1d1f" }}>Neighborhood</h2>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { emoji:"🚇", label:"Metro Station", dist:"0.8 km", time:"10 min walk" },
+                      { emoji:"🏥", label:"Hospital",      dist:"1.2 km", time:"5 min drive" },
+                      { emoji:"🏫", label:"Top Schools",   dist:"0.5 km", time:"6 min walk" },
+                      { emoji:"🛒", label:"Supermarket",   dist:"0.3 km", time:"4 min walk" },
+                      { emoji:"✈️", label:"Airport",        dist:"18 km",  time:"30 min drive" },
+                      { emoji:"🌳", label:"City Park",     dist:"0.6 km", time:"8 min walk" },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background:"#f5f5f7" }}>
+                        <span style={{ fontSize:"1.25rem", lineHeight:1 }}>{item.emoji}</span>
+                        <div>
+                          <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#1d1d1f" }}>{item.label}</div>
+                          <div style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.45)", marginTop:1 }}>{item.dist} · {item.time}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.3)", marginTop:12 }}>* Approximate distances. Verify before finalising.</p>
+                </div>
 
                 {project.amenities.length > 0 && (
                   <AmenitiesShowcase amenities={project.amenities}/>
@@ -696,6 +975,25 @@ export default function ProjectExplorer({ project }: Props) {
 
       {tourFlat && (
         <VirtualTourModal flat={tourFlat} onClose={() => setTourFlat(null)}/>
+      )}
+
+      {/* Floating WhatsApp FAB — mobile only, hidden when flat detail sheet is open */}
+      {!selectedFlat && (
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(`Hi, I'm interested in ${project.name} at ${project.location}. Please share availability and pricing.`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="md:hidden fixed bottom-20 right-4 z-30 flex items-center justify-center rounded-full shadow-xl"
+          style={{
+            width: 52, height: 52,
+            background: "linear-gradient(135deg,#25d366 0%,#128c4a 100%)",
+            boxShadow: "0 4px 20px rgba(37,211,102,0.45), 0 2px 8px rgba(0,0,0,0.2)",
+          }}
+          aria-label="Chat on WhatsApp">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </a>
       )}
 
       <UrgencyToast available={stats.available} reserved={stats.reserved}

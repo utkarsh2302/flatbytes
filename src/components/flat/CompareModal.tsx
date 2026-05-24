@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Flat } from "@/lib/types";
 import { FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { X, Check } from "lucide-react";
+import { X, Check, Share2 } from "lucide-react";
 
 interface Props {
   flats: Flat[];
@@ -53,11 +53,22 @@ function getBestIdx(row: RowDef, flats: Flat[]): number | null {
 }
 
 export default function CompareModal({ flats, projectName, onClose }: Props) {
+  const [shareCopied, setShareCopied] = useState(false);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const handleShare = () => {
+    const ids = flats.map((f) => f.id).join(",");
+    const url = `${window.location.origin}/shortlist?ids=${ids}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    });
+  };
 
   return (
     <div
@@ -80,9 +91,19 @@ export default function CompareModal({ flats, projectName, onClose }: Props) {
             <h2 style={{ fontWeight: 700, fontSize: 18, color: "#1d1d1f", letterSpacing: "-0.02em" }}>Compare Flats</h2>
             <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.45)", marginTop: 2 }}>{projectName}</p>
           </div>
-          <button onClick={onClose} style={{ padding: 8, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "rgba(0,0,0,0.4)" }}>
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={{ background: shareCopied ? "rgba(52,199,89,0.1)" : "#f5f5f7", color: shareCopied ? "#1a7f4a" : "rgba(0,0,0,0.56)", border: "none", cursor: "pointer" }}
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {shareCopied ? "Copied!" : "Share"}
+            </button>
+            <button onClick={onClose} style={{ padding: 8, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "rgba(0,0,0,0.4)" }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Mobile: vertical cards | Desktop: table */}

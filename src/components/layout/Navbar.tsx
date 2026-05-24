@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User, Heart } from "lucide-react";
 import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -21,6 +21,8 @@ export default function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const supabase = createClient();
 
+  const [wishCount, setWishCount] = useState(0);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -28,6 +30,16 @@ export default function Navbar() {
     });
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const sync = () => {
+      try { setWishCount(JSON.parse(localStorage.getItem("flatbytes_wishlist") ?? "[]").length); } catch {}
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    const interval = setInterval(sync, 2000);
+    return () => { window.removeEventListener("storage", sync); clearInterval(interval); };
   }, []);
 
   async function handleSignOut() {
@@ -87,6 +99,19 @@ export default function Navbar() {
             })}
           </div>
 
+          {/* Shortlist heart icon (desktop) */}
+          <Link href="/shortlist" className="hidden md:flex items-center relative p-1.5 rounded-standard transition-colors"
+            style={{ color: "rgba(255,255,255,0.7)" }}
+            title="My Shortlist">
+            <Heart className="w-4 h-4" />
+            {wishCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                style={{ background: "#ff3b30", color: "#fff" }}>
+                {wishCount > 9 ? "9+" : wishCount}
+              </span>
+            )}
+          </Link>
+
           {/* CTA / Auth */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
@@ -141,6 +166,19 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden nav-glass border-t border-white/10 px-4 py-3 flex flex-col gap-1">
+          <Link href="/shortlist" onClick={() => setOpen(false)}
+            className="flex items-center justify-between px-3 py-2.5 rounded-standard text-sm text-white/70 hover:text-white hover:bg-white/8 transition-colors">
+            <div className="flex items-center gap-2">
+              <Heart className="w-4 h-4" />
+              My Shortlist
+            </div>
+            {wishCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold"
+                style={{ background: "#ff3b30", color: "#fff" }}>
+                {wishCount}
+              </span>
+            )}
+          </Link>
           {links.map((l) => (
             <Link
               key={l.label}
