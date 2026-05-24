@@ -191,13 +191,20 @@ function ProjectCard({ project }: { project: Project }) {
           </div>
         )}
 
-        {/* Price + CTA */}
+        {/* Price + Possession + CTA */}
         <div className="flex items-center justify-between">
           <div>
             <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Pricing
             </div>
             <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0071e3", letterSpacing: "-0.01em" }}>On Request</div>
+            {project.possession_date && (
+              <div style={{ fontSize: "0.7rem", color: "rgba(0,0,0,0.38)", marginTop: 2 }}>
+                {new Date(project.possession_date) <= new Date()
+                  ? "Ready to Move"
+                  : `Possession: ${new Date(project.possession_date).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
+              </div>
+            )}
           </div>
 
           <div

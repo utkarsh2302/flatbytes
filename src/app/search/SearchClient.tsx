@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   SlidersHorizontal, X, MapPin, Building2, ArrowRight,
-  ChevronDown, Phone,
+  ChevronDown, Phone, Heart,
 } from "lucide-react";
 import type { FlatType } from "@/lib/types";
 import type { FlatWithProject } from "@/lib/data";
@@ -283,6 +283,29 @@ function FlatCard({
   selectedTypes: FlatType[];
   onInterested: () => void;
 }) {
+  const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    try {
+      const ids: string[] = JSON.parse(localStorage.getItem("flatbytes_wishlist") ?? "[]");
+      setWishlisted(ids.includes(flat.id));
+    } catch {}
+  }, [flat.id]);
+
+  function toggleWishlist(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const ids: string[] = JSON.parse(localStorage.getItem("flatbytes_wishlist") ?? "[]");
+      const next = ids.includes(flat.id) ? ids.filter(x => x !== flat.id) : [...ids, flat.id];
+      localStorage.setItem("flatbytes_wishlist", JSON.stringify(next));
+      setWishlisted(!wishlisted);
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+  }
+
+  const viewIn3DUrl = `/projects/${projectId}?flat=${flat.id}&types=${flat.flat_type}${selectedTypes.length > 1 ? `,${selectedTypes.filter(t => t !== flat.flat_type).join(",")}` : ""}`;
+
   return (
     <div className="flat-card">
       {/* Top section */}
@@ -292,20 +315,31 @@ function FlatCard({
           <span style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.025em" }}>
             {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type}
           </span>
-          <span
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-            style={{
-              background: `${STATUS_COLORS[flat.status]}18`,
-              color: STATUS_COLORS[flat.status],
-              border: `1px solid ${STATUS_COLORS[flat.status]}35`,
-            }}
-          >
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleWishlist}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+              style={{ background: wishlisted ? "rgba(255,59,48,0.1)" : "#f5f5f7", border: "none", cursor: "pointer" }}
+              aria-label={wishlisted ? "Remove from shortlist" : "Add to shortlist"}
+              title={wishlisted ? "Remove from shortlist" : "Add to shortlist"}
+            >
+              <Heart className="w-4 h-4" style={{ color: wishlisted ? "#ff3b30" : "rgba(0,0,0,0.3)", fill: wishlisted ? "#ff3b30" : "none" }} />
+            </button>
             <span
-              className="w-1.5 h-1.5 rounded-full inline-block"
-              style={{ background: STATUS_COLORS[flat.status] }}
-            />
-            {flat.status === "available" ? "Available" : flat.status === "discussion" ? "Open to discuss" : flat.status}
-          </span>
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{
+                background: `${STATUS_COLORS[flat.status]}18`,
+                color: STATUS_COLORS[flat.status],
+                border: `1px solid ${STATUS_COLORS[flat.status]}35`,
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full inline-block"
+                style={{ background: STATUS_COLORS[flat.status] }}
+              />
+              {flat.status === "available" ? "Available" : flat.status === "discussion" ? "Open to discuss" : flat.status}
+            </span>
+          </div>
         </div>
 
         {/* Flat number */}
@@ -341,7 +375,7 @@ function FlatCard({
         style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: 12 }}
       >
         <Link
-          href={`/projects/${projectId}?types=${flat.flat_type}${selectedTypes.length > 1 ? `,${selectedTypes.filter(t => t !== flat.flat_type).join(",")}` : ""}`}
+          href={viewIn3DUrl}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-xl font-medium"
           style={{
             height: 44, fontSize: "0.8125rem",
