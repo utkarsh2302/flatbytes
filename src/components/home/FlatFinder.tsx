@@ -53,12 +53,19 @@ export default function FlatFinder() {
       }}
     >
       {/* Step 1 — BHK */}
-      <p
-        className="mb-3"
-        style={{ fontSize: "0.78rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}
-      >
-        Step 1 — How many bedrooms?
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Step 1 — Bedrooms
+        </p>
+        {selectedTypes.length > 0 && (
+          <button
+            onClick={() => setSelectedTypes([])}
+            style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-5">
         {BHK_OPTIONS.map(({ type, emoji, label }) => (
           <button
@@ -75,12 +82,19 @@ export default function FlatFinder() {
       </div>
 
       {/* Step 2 — Budget */}
-      <p
-        className="mb-3"
-        style={{ fontSize: "0.78rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}
-      >
-        Step 2 — What&apos;s your budget?
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Step 2 — Budget
+        </p>
+        {selectedBudgetIdx !== null && (
+          <button
+            onClick={() => setSelectedBudgetIdx(null)}
+            style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
       <div className="flex gap-2 mb-5 overflow-x-auto pb-0.5 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {BUDGET_OPTIONS.map(({ label }, idx) => (
           <button
@@ -102,7 +116,7 @@ export default function FlatFinder() {
         style={{
           height: 56,
           fontSize: "1rem",
-          background: hasSelection ? "#0071e3" : "rgba(255,255,255,0.15)",
+          background: "#0071e3",
           color: "#fff",
           border: "none",
           cursor: "pointer",
@@ -111,7 +125,11 @@ export default function FlatFinder() {
         aria-label="Search for flats"
       >
         <Search className="w-5 h-5 shrink-0" />
-        {hasSelection ? "Show Matching Flats" : "Browse All Available Flats"}
+        {selectedTypes.length === 1
+          ? `Show ${BHK_OPTIONS.find(o => o.type === selectedTypes[0])?.label ?? selectedTypes[0].toUpperCase()} Flats`
+          : selectedTypes.length > 1
+          ? `Show ${selectedTypes.length} BHK Types`
+          : "Browse All Available Flats"}
       </button>
     </div>
   );

@@ -87,8 +87,6 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
     return Array.from(map.values());
   }, [filtered]);
 
-  const activeFilterCount = selectedTypes.length + (maxPrice ? 1 : 0);
-
   return (
     <main className="min-h-screen" style={{ background: "#f5f5f7", paddingTop: 60 }}>
       {/* ── Sticky header ─────────────────────────────── */}

@@ -6,7 +6,7 @@ import { FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
 import UnifiedLeadForm from "@/components/buyer/UnifiedLeadForm";
 import { analyzeLivingExperience } from "@/lib/living-experience";
-import { X, Maximize2, Compass, Layers, GitCompare, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
+import { X, Maximize2, Compass, Layers, GitCompare, Eye, Heart, Share2 } from "lucide-react";
 
 interface Props {
   flat: Flat;
@@ -343,6 +343,25 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
                 className="w-full" style={{ accentColor: "#0071e3" }} />
             </div>
 
+            {/* Interest rate row */}
+            <div className="mb-3">
+              <div className="flex justify-between mb-1.5" style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.45)" }}>
+                <span>Interest Rate</span>
+                <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{rate.toFixed(1)}% p.a.</span>
+              </div>
+              <div className="flex gap-1.5">
+                {[7.0, 8.0, 8.5, 9.0, 10.0].map(r => (
+                  <button key={r} onClick={() => setRate(r)}
+                    className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={rate === r
+                      ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
+                      : { background: "#f5f5f7", color: "rgba(0,0,0,0.56)", border: "none", cursor: "pointer" }}>
+                    {r}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Tenure row */}
             <div className="flex gap-1.5 mb-4">
               {[10, 15, 20, 25, 30].map(y => (
@@ -362,17 +381,23 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
                 <div>
                   <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Est. Monthly EMI</div>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0071e3", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-                    ₹{(emi / 100000).toFixed(1)}L
+                    ₹{emi >= 100000
+                      ? `${(emi / 100000).toFixed(1)}L`
+                      : emi.toLocaleString("en-IN")}
                     <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "rgba(0,0,0,0.4)" }}>/mo</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Interest</div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1d1d1f" }}>₹{(interest / 10000000).toFixed(2)} Cr</div>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1d1d1f" }}>
+                    {interest >= 10000000
+                      ? `₹${(interest / 10000000).toFixed(2)} Cr`
+                      : `₹${(interest / 100000).toFixed(1)}L`}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center justify-between" style={{ fontSize: "0.7rem", color: "rgba(0,0,0,0.38)" }}>
-                <span>Loan: ₹{(loanAmount / 10000000).toFixed(2)} Cr @ {rate}%</span>
+                <span>Loan: {loanAmount >= 10000000 ? `₹${(loanAmount/10000000).toFixed(2)} Cr` : `₹${(loanAmount/100000).toFixed(1)}L`} @ {rate}%</span>
                 <span>{tenure} years</span>
               </div>
             </div>
