@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { Flat } from "@/lib/types";
 import { X, Box, Images, ChevronLeft, ChevronRight } from "lucide-react";
+import { FLAT_TYPE_LABELS } from "@/lib/types";
 
 const FlatInterior3D = dynamic(() => import("./FlatInterior3D"), {
   ssr: false,
@@ -51,6 +52,21 @@ const PHOTO_SETS: Record<string, RoomPhoto[]> = {
     { room: "Conference Room", url: "https://images.unsplash.com/photo-1529579538991-6e5ab50a1cb4?w=1600&q=85&fit=crop" },
     { room: "City View",       url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&fit=crop" },
   ],
+  "penthouse": [
+    { room: "Sky Lounge",      url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=85&fit=crop" },
+    { room: "Panoramic View",  url: "https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=1600&q=85&fit=crop" },
+    { room: "Master Suite",    url: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=1600&q=85&fit=crop" },
+    { room: "Private Pool",    url: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1600&q=85&fit=crop" },
+    { room: "Gourmet Kitchen", url: "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1600&q=85&fit=crop" },
+    { room: "Master Bath",     url: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=85&fit=crop" },
+    { room: "Terrace",         url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&fit=crop" },
+  ],
+  "1bhk": [
+    { room: "Living Room",     url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=85&fit=crop" },
+    { room: "Bedroom",         url: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=85&fit=crop" },
+    { room: "Kitchen",         url: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=85&fit=crop" },
+    { room: "Bathroom",        url: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=85&fit=crop" },
+  ],
   "default": [
     { room: "Living Room",     url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=85&fit=crop" },
     { room: "Bedroom",         url: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=85&fit=crop" },
@@ -62,9 +78,11 @@ const PHOTO_SETS: Record<string, RoomPhoto[]> = {
 
 function photosForFlat(flat: Flat): RoomPhoto[] {
   const t = flat.flat_type.toLowerCase();
+  if (t.includes("penthouse")) return PHOTO_SETS["penthouse"];
   if (t.includes("4")) return PHOTO_SETS["4bhk"];
   if (t.includes("3")) return PHOTO_SETS["3bhk"];
   if (t.includes("2")) return PHOTO_SETS["2bhk"];
+  if (t === "1bhk" || t.includes("1")) return PHOTO_SETS["1bhk"];
   if (t.includes("office") || t.includes("commercial")) return PHOTO_SETS["office"];
   return PHOTO_SETS["default"];
 }
@@ -227,7 +245,7 @@ export default function VirtualTourModal({ flat, onClose }: Props) {
             {isOffice ? "Unit" : "Flat"} {flat.flat_number}
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
-            {flat.flat_type.toUpperCase().replace("_", " ")} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft
+            {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft
           </div>
         </div>
 
