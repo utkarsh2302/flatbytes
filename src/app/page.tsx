@@ -69,8 +69,8 @@ export default async function HomePage() {
         style={{ background: "radial-gradient(ellipse 80% 60% at 70% 0%, #0a2a4a 0%, #050c1a 55%, #000 100%)" }}
       >
         {/* Glow accents */}
-        <div className="absolute pointer-events-none" style={{ top: "-10%", left: "10%", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,113,227,0.22), transparent 70%)" }} />
-        <div className="absolute pointer-events-none" style={{ bottom: "0%", right: "5%", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(28,199,127,0.16), transparent 70%)" }} />
+        <div className="absolute pointer-events-none" style={{ top: "-10%", left: "5%", width: "min(420px, 80vw)", height: "min(420px, 80vw)", borderRadius: "50%", background: "radial-gradient(circle, rgba(0,113,227,0.22), transparent 70%)" }} />
+        <div className="absolute pointer-events-none" style={{ bottom: "0%", right: "0%", width: "min(360px, 60vw)", height: "min(360px, 60vw)", borderRadius: "50%", background: "radial-gradient(circle, rgba(28,199,127,0.16), transparent 70%)" }} />
 
         <div className="relative max-w-7xl mx-auto px-5 pt-20 pb-12 sm:pt-32 sm:pb-24">
           <div className="grid lg:grid-cols-2 gap-10 items-start">
