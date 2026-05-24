@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { Sky } from 'three/examples/jsm/objects/Sky.js'
 
 export type BuildingType = 'residential' | 'commercial'
 
@@ -358,38 +359,29 @@ export default function ModelViewer({
     const scene = new THREE.Scene()
 
     if (isGLB) {
-      // Gradient sky: use a large hemisphere/dome as background
-      const skyGeo = new THREE.SphereGeometry(500, 32, 16)
-      const skyMat = new THREE.ShaderMaterial({
-        uniforms: {
-          topColor:    { value: new THREE.Color(0x1a6fa8) },
-          bottomColor: { value: new THREE.Color(0xd8eef8) },
-          offset:      { value: 20 },
-          exponent:    { value: 0.4 },
-        },
-        vertexShader: `
-          varying vec3 vWorldPos;
-          void main() {
-            vec4 worldPos = modelMatrix * vec4(position, 1.0);
-            vWorldPos = worldPos.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }`,
-        fragmentShader: `
-          uniform vec3 topColor;
-          uniform vec3 bottomColor;
-          uniform float offset;
-          uniform float exponent;
-          varying vec3 vWorldPos;
-          void main() {
-            float h = normalize(vWorldPos + offset).y;
-            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-          }`,
-        side: THREE.BackSide,
-        depthWrite: false,
-      })
-      const skyDome = new THREE.Mesh(skyGeo, skyMat)
-      scene.add(skyDome)
-      scene.fog = new THREE.FogExp2(0xc8e4f5, 0.0008)
+      // Physically-based sky (Preetham/Hosek-Wilkie atmospheric scattering model).
+      // Creates realistic blue sky with visible sun disc, horizon haze, Mie glow.
+      const sky = new Sky()
+      sky.scale.setScalar(1000)
+      scene.add(sky)
+      const skyU = (sky.material as THREE.ShaderMaterial).uniforms
+      skyU['turbidity'].value      = 4.0   // city haze — higher = hazier
+      skyU['rayleigh'].value       = 1.4   // blue sky scattering
+      skyU['mieCoefficient'].value = 0.006 // aerosol scattering (sun glow size)
+      skyU['mieDirectionalG'].value= 0.84  // sun disc sharpness
+
+      // Sun at ~40° elevation, slightly south-west — afternoon city light
+      const SUN_ELEVATION = 42  // degrees above horizon
+      const SUN_AZIMUTH   = 195 // degrees (south-west)
+      const sunVec = new THREE.Vector3()
+      sunVec.setFromSphericalCoords(
+        1,
+        THREE.MathUtils.degToRad(90 - SUN_ELEVATION),
+        THREE.MathUtils.degToRad(SUN_AZIMUTH)
+      )
+      skyU['sunPosition'].value.copy(sunVec)
+
+      scene.fog = new THREE.FogExp2(0xc8dff0, 0.0006)
     } else {
       scene.background = new THREE.Color(skyColor)
       scene.fog = new THREE.Fog(skyColor, 200, 500)
@@ -408,21 +400,28 @@ export default function ModelViewer({
     mount.appendChild(renderer.domElement)
 
     // PMREMGenerator for environment reflections on MeshPhysicalMaterial
+    // Environment map — bake the sky into a cube map so glass/metal reflects real sky blue.
+    // RoomEnvironment gives generic soft box reflections; Sky gives proper outdoor look.
     const pmremGenerator = new THREE.PMREMGenerator(renderer)
     pmremGenerator.compileEquirectangularShader()
+    // Start with RoomEnvironment; replaced with sky-baked env after scene is populated.
     const envRenderTarget = pmremGenerator.fromScene(new RoomEnvironment())
     scene.environment = envRenderTarget.texture
-    // Do NOT set scene.background from env — we use the sky dome instead
     pmremGenerator.dispose()
 
     // Lighting — architectural quality for GLB, standard for procedural
     let sun: THREE.DirectionalLight
     if (isGLB) {
       // Total illumination kept low (~2.5) so ACES tone mapping preserves material colours.
-      // High ambient (>1.0) + strong sun (>3.0) saturates everything to white.
       scene.add(new THREE.AmbientLight(0xfff8f2, 0.45))
       sun = new THREE.DirectionalLight(0xfff4d0, 2.2)
-      sun.position.set(60, 120, -70)
+      // Match directional light to sky sun (elevation 42°, azimuth 195°)
+      const SUN_EL = 42, SUN_AZ = 195
+      sun.position.setFromSphericalCoords(
+        150,
+        THREE.MathUtils.degToRad(90 - SUN_EL),
+        THREE.MathUtils.degToRad(SUN_AZ)
+      )
       sun.castShadow = true
       sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
       sun.shadow.camera.near = 1; sun.shadow.camera.far = 700
@@ -430,13 +429,14 @@ export default function ModelViewer({
       sun.shadow.camera.top = 150; sun.shadow.camera.bottom = -150
       sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.02
       scene.add(sun)
-      const fill = new THREE.DirectionalLight(0x8ec8f8, 0.7)
-      fill.position.set(-80, 60, 80); scene.add(fill)
-      const front = new THREE.DirectionalLight(0xd0e8ff, 0.4)
-      front.position.set(0, 40, 100); scene.add(front)
-      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.2)
-      bounce.position.set(0, -50, 0); scene.add(bounce)
-      scene.add(new THREE.HemisphereLight(0x7ec8f0, 0xb09060, 0.45))
+      // Sky fill — opposite side to sun, cool blue (scattered sky light)
+      const fill = new THREE.DirectionalLight(0x8ec8f8, 0.65)
+      fill.position.set(80, 80, -80); scene.add(fill)
+      // Ground bounce — warm reflected light from ground
+      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.18)
+      bounce.position.set(0, -60, 0); scene.add(bounce)
+      // Hemisphere: sky blue top, warm sandy ground
+      scene.add(new THREE.HemisphereLight(0x6ab4e8, 0xc8a870, 0.5))
     } else {
       scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
       sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
