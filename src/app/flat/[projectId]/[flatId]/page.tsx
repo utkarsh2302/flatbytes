@@ -4,7 +4,8 @@ import Link from "next/link";
 import { getProjectWithData } from "@/lib/data";
 import { FLAT_TYPE_LABELS } from "@/lib/types";
 import { analyzeLivingExperience } from "@/lib/living-experience";
-import { MapPin, Shield, Compass, Layers, Maximize2, ChevronLeft } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import { MapPin, Shield, Compass, Layers, Maximize2, ChevronLeft, Building2 } from "lucide-react";
 
 interface Props {
   params: { projectId: string; flatId: string };
@@ -52,8 +53,9 @@ export default async function FlatSharePage({ params }: Props) {
   );
 
   return (
-    <div style={{ background: "#f5f5f7", minHeight: "100vh", paddingTop: 64 }}>
-      <div className="max-w-2xl mx-auto px-4 py-8">
+    <div style={{ background: "#f5f5f7", minHeight: "100vh" }}>
+      <Navbar />
+      <div className="max-w-2xl mx-auto px-4 py-8 pt-20 pb-24">
 
         {/* Back */}
         <Link href={`/projects/${project.id}`}
@@ -87,7 +89,7 @@ export default async function FlatSharePage({ params }: Props) {
               {[
                 { icon: <Layers className="w-3.5 h-3.5" />, v: FLAT_TYPE_LABELS[flat.flat_type] },
                 { icon: <Maximize2 className="w-3.5 h-3.5" />, v: `${flat.carpet_area_sqft} sq.ft` },
-                { icon: <Layers className="w-3.5 h-3.5" />, v: `Floor ${flat.floor}` },
+                { icon: <Building2 className="w-3.5 h-3.5" />, v: `Floor ${flat.floor}` },
                 ...(flat.facing ? [{ icon: <Compass className="w-3.5 h-3.5" />, v: flat.facing }] : []),
               ].map((s, i) => (
                 <div key={i} className="flex items-center gap-1.5"
@@ -135,9 +137,14 @@ export default async function FlatSharePage({ params }: Props) {
               <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
               <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", marginTop: 2 }}>WhatsApp us for a personalised cost sheet</div>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0" style={{ background: "rgba(0,113,227,0.1)", color: "#0071e3", border: "1px solid rgba(0,113,227,0.2)" }}>
-              Get Details →
-            </div>
+            <a
+              href={`https://wa.me/?text=${waMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shrink-0"
+              style={{ background: "rgba(37,211,102,0.1)", color: "#128c4a", border: "1px solid rgba(37,211,102,0.25)", textDecoration: "none" }}>
+              Get Price →
+            </a>
           </div>
 
           {/* CTAs */}
@@ -159,11 +166,11 @@ export default async function FlatSharePage({ params }: Props) {
               Chat on WhatsApp
             </a>
             <Link
-              href={`/projects/${project.id}`}
+              href={`/projects/${project.id}?types=${flat.flat_type}&flat=${flat.id}`}
               className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold"
               style={{ background: "#f5f5f7", color: "#1d1d1f", textDecoration: "none", border: "1.5px solid rgba(0,0,0,0.1)" }}
             >
-              Explore Full Project in 3D
+              Explore in 3D →
             </Link>
           </div>
         </div>
