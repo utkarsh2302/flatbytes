@@ -384,7 +384,7 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
       </div>
 
       {/* What's included */}
-      <div className="p-5 mt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
+      <div className="p-5 mt-2 pb-8" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
         <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
           Included in Price
         </div>

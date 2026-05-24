@@ -199,13 +199,19 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
                   <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.015em" }}>
                     {project.name}
                   </h2>
-                  <div className="flex items-center gap-1 mt-0.5" style={{ color: "rgba(0,0,0,0.5)", fontSize: "0.8125rem" }}>
-                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                    {project.city}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="flex items-center gap-1" style={{ color: "rgba(0,0,0,0.5)", fontSize: "0.8125rem" }}>
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      {project.city}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ background: "rgba(52,199,89,0.1)", color: "#1a7f4a", border: "1px solid rgba(52,199,89,0.2)" }}>
+                      {project.flats.length} unit{project.flats.length !== 1 ? "s" : ""}
+                    </span>
                   </div>
                 </div>
                 <Link
-                  href={`/projects/${project.id}`}
+                  href={`/projects/${project.id}${selectedTypes.length > 0 ? `?types=${selectedTypes.join(",")}` : ""}`}
                   className="hidden sm:flex items-center gap-1.5 px-4 rounded-xl font-medium shrink-0"
                   style={{ height: 38, fontSize: "0.8125rem", background: "#f0f0f2", color: "#1d1d1f", textDecoration: "none" }}
                 >
@@ -221,6 +227,7 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
                     flat={flat}
                     projectId={project.id}
                     projectName={project.name}
+                    selectedTypes={selectedTypes}
                     onInterested={() => setLeadTarget({ projectId: project.id, projectName: project.name, flat })}
                   />
                 ))}
@@ -228,7 +235,7 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
 
               {/* Mobile "view in 3D" link */}
               <Link
-                href={`/projects/${project.id}`}
+                href={`/projects/${project.id}${selectedTypes.length > 0 ? `?types=${selectedTypes.join(",")}` : ""}`}
                 className="sm:hidden flex items-center justify-center gap-2 mt-3 rounded-2xl font-medium"
                 style={{ height: 44, background: "#f0f0f2", color: "#1d1d1f", fontSize: "0.875rem", textDecoration: "none" }}
               >
@@ -266,11 +273,12 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
 
 /* ── Flat card ─────────────────────────────────────────────── */
 function FlatCard({
-  flat, projectId, projectName, onInterested,
+  flat, projectId, projectName, selectedTypes, onInterested,
 }: {
   flat: FlatWithProject;
   projectId: string;
   projectName: string;
+  selectedTypes: FlatType[];
   onInterested: () => void;
 }) {
   return (
@@ -326,7 +334,7 @@ function FlatCard({
         style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: 12 }}
       >
         <Link
-          href={`/projects/${projectId}`}
+          href={`/projects/${projectId}?types=${flat.flat_type}${selectedTypes.length > 1 ? `,${selectedTypes.filter(t => t !== flat.flat_type).join(",")}` : ""}`}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-xl font-medium"
           style={{
             height: 44, fontSize: "0.8125rem",

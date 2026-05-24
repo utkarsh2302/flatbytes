@@ -53,8 +53,12 @@ export default function BottomNav() {
             className="relative flex flex-col items-center gap-0.5 px-4 py-1 rounded-standard transition-colors"
             style={{ color: active ? "#0071e3" : "rgba(0,0,0,0.42)", minWidth: 60 }}
           >
-            <div className="relative">
-              <Icon className="w-5 h-5" />
+            {/* Active bar */}
+            {active && (
+              <span className="absolute top-0 inset-x-3 h-0.5 rounded-b-full" style={{ background: "#0071e3" }} />
+            )}
+            <div className="relative mt-1">
+              <Icon className={`w-5 h-5 transition-transform ${active ? "scale-110" : ""}`} />
               {badge > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
                   style={{ background: "#ff3b30", color: "#fff", fontSize: 9, fontWeight: 700 }}>
