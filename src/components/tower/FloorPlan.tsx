@@ -71,9 +71,6 @@ export default function FloorPlan({
         const avail = floorFlats.filter(f => f.status === "available").length;
         const sold = floorFlats.filter(f => f.status === "sold").length;
         const res = floorFlats.filter(f => f.status === "reserved").length;
-        const prices = floorFlats.filter(f => f.total_price > 0).map(f => f.total_price);
-        const minP = prices.length ? Math.min(...prices) : 0;
-        const maxP = prices.length ? Math.max(...prices) : 0;
         return (
           <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard overflow-x-auto" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", scrollbarWidth: "none", flexShrink: 0, minHeight: 36 }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f", whiteSpace: "nowrap" }}>Floor {floor}</span>

@@ -8,6 +8,7 @@ import {
   Search, Phone, Building2, Home, CheckCircle2, Clock, AlertTriangle,
   Receipt, Download, HardHat, MessageSquareWarning, ArrowLeft,
 } from "lucide-react";
+import { FLAT_TYPE_LABELS } from "@/lib/types";
 
 const DEMO_PHONES = ["9811100001", "9811100005", "9811100010"];
 
@@ -106,7 +107,7 @@ function CustomerDashboard({ data, onBack }: { data: CustomerData; onBack: () =>
               <Building2 className="w-3.5 h-3.5" /> {booking.project_name}
             </span>
             <span className="flex items-center gap-1.5" style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.85)" }}>
-              <Home className="w-3.5 h-3.5" /> Flat {booking.flat_number} · {booking.flat_type.toUpperCase()} · Floor {booking.floor}
+              <Home className="w-3.5 h-3.5" /> Flat {booking.flat_number} · {(FLAT_TYPE_LABELS as Record<string, string>)[booking.flat_type] ?? booking.flat_type.toUpperCase()} · Floor {booking.floor}
             </span>
           </div>
         </div>

@@ -248,9 +248,6 @@ export default function ProjectsClient({ projects }: Props) {
     });
   }, [projects, query, city, typeFilter]);
 
-  const residentialCount = projects.filter((p) => p.project_type === "residential").length;
-  const commercialCount = projects.filter((p) => p.project_type === "commercial").length;
-
   return (
     <>
       {/* Filter bar */}

@@ -10,6 +10,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const links = [
   { label: "Projects", href: "/projects" },
+  { label: "Search", href: "/search" },
   { label: "EMI Calc", href: "/emi-calculator" },
   { label: "Admin", href: "/admin" },
 ];
