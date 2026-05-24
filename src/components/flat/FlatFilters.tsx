@@ -149,20 +149,6 @@ export default function FlatFilters({ filters, onChange, totalFloors, maxPrice, 
         </div>
       </CollapsibleSection>
 
-      {/* Budget */}
-      <CollapsibleSection title="Budget">
-        <div className="text-micro mb-2" style={{ color: "rgba(0,0,0,0.56)" }}>
-          Up to ₹{(filters.maxPrice / 10000000).toFixed(1)} Cr
-        </div>
-        <input type="range" min={0} max={maxPrice} step={500000} value={filters.maxPrice}
-          onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-          className="w-full" style={{ accentColor: "#0071e3" }} />
-        <div className="flex justify-between text-micro mt-1" style={{ color: "rgba(0,0,0,0.38)" }}>
-          <span>₹0</span>
-          <span>₹{(maxPrice / 10000000).toFixed(1)} Cr</span>
-        </div>
-      </CollapsibleSection>
-
       {/* Facing */}
       <CollapsibleSection title="Facing" defaultOpen={false}>
         <div className="flex flex-wrap gap-2">

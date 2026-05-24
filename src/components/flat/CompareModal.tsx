@@ -12,12 +12,6 @@ interface Props {
   onClose: () => void;
 }
 
-const formatPrice = (p: number) =>
-  p >= 10000000 ? `₹${(p / 10000000).toFixed(2)} Cr` : `₹${(p / 100000).toFixed(0)}L`;
-
-const calcEmi = (price: number) =>
-  Math.round((price * 0.8 * 0.009) / (1 - Math.pow(1.009, -240)));
-
 type RowDef = {
   label: string;
   get: (f: Flat) => string | number | null;
@@ -33,9 +27,7 @@ const ROWS: RowDef[] = [
   { label: "Facing", get: (f) => f.facing },
   { label: "Bathrooms", get: (f) => f.bathrooms, format: (v) => v != null ? String(v) : "—" },
   { label: "Balconies", get: (f) => f.balcony_count, format: (v) => v != null ? String(v) : "—" },
-  { label: "Total Price", get: (f) => f.total_price, best: "min", format: (v) => v ? formatPrice(Number(v)) : "—" },
-  { label: "Price/sq.ft", get: (f) => f.price_per_sqft, best: "min", format: (v) => v ? `₹${Math.round(Number(v)).toLocaleString()}` : "—" },
-  { label: "Est. EMI", get: (f) => calcEmi(f.total_price), best: "min", format: (v) => `₹${Number(v).toLocaleString()}/mo` },
+  { label: "Pricing", get: () => "On Request" },
   { label: "Status", get: (f) => f.status },
 ];
 
