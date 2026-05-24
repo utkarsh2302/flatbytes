@@ -30,12 +30,6 @@ const STATUS_LABEL: Record<string, string> = {
   available: "Available", sold: "Sold", reserved: "Reserved", held: "Held", discussion: "In Discussion",
 };
 
-function formatPrice(p: number) {
-  if (p >= 10000000) return `₹${(p / 10000000).toFixed(2)} Cr`;
-  if (p >= 100000) return `₹${(p / 100000).toFixed(1)} L`;
-  return `₹${p.toLocaleString("en-IN")}`;
-}
-
 export default function ShortlistClient() {
   const [flats, setFlats] = useState<FlatWithProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,15 +204,18 @@ export default function ShortlistClient() {
 
                   {/* Card header */}
                   <div className="px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                    <div className="flex items-start justify-between">
-                      <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <div style={{ fontSize: "1.125rem", fontWeight: 800, color: "#1d1d1f", letterSpacing: "-0.02em" }}>
                           Flat {flat.flat_number}
                         </div>
-                        <div style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.48)", marginTop: 2 }}>{flat.project_name}</div>
+                        <div style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.6)", marginTop: 1, fontWeight: 500 }}>{flat.project_name}</div>
+                        {flat.project_location && (
+                          <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.38)", marginTop: 1 }}>📍 {flat.project_location}</div>
+                        )}
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: sb, color: sc, border: `1px solid ${sc}30`, flexShrink: 0, marginTop: 2 }}>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 mt-1"
+                        style={{ background: sb, color: sc, border: `1px solid ${sc}30` }}>
                         {STATUS_LABEL[flat.status] ?? flat.status}
                       </span>
                     </div>
@@ -249,22 +246,24 @@ export default function ShortlistClient() {
                   {/* Actions */}
                   <div className="px-4 pb-4 flex gap-2">
                     <Link
-                      href={`/projects/${flat.project_id}?flat=${flat.id}`}
+                      href={`/projects/${flat.project_id}?flat=${flat.id}&types=${flat.flat_type}`}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold"
                       style={{ background: "#0071e3", color: "#fff", textDecoration: "none" }}
                     >
-                      <Building2 className="w-3.5 h-3.5" /> View Project
+                      <Building2 className="w-3.5 h-3.5" /> View in 3D
                     </Link>
-                    <button
-                      onClick={() => toggleCompare(flat.id)}
-                      className="flex items-center justify-center px-3 py-2.5 rounded-xl transition-all"
-                      title={inCompare ? "Remove from compare" : "Add to compare"}
-                      style={inCompare
-                        ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
-                        : { background: "#f5f5f7", color: "rgba(0,0,0,0.56)", border: "none", cursor: "pointer" }}
-                    >
-                      <GitCompare className="w-4 h-4" />
-                    </button>
+                    {!isSold && (
+                      <button
+                        onClick={() => toggleCompare(flat.id)}
+                        className="flex items-center justify-center px-3 py-2.5 rounded-xl transition-all"
+                        title={inCompare ? "Remove from compare" : "Add to compare"}
+                        style={inCompare
+                          ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
+                          : { background: "#f5f5f7", color: "rgba(0,0,0,0.56)", border: "none", cursor: "pointer" }}
+                      >
+                        <GitCompare className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => remove(flat.id)}
                       className="flex items-center justify-center px-3 py-2.5 rounded-xl"

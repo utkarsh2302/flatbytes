@@ -6,6 +6,7 @@ import Image from "next/image";
 import type { Project } from "@/lib/types";
 import { getProjectStats } from "@/lib/types";
 import { MapPin, Search, X, Building2, Briefcase, Layers, TrendingUp, Check } from "lucide-react";
+import { FLAT_TYPE_LABELS } from "@/lib/types";
 
 interface Props {
   projects: Project[];
@@ -28,6 +29,14 @@ function ProjectCard({ project }: { project: Project }) {
   const typeMeta = TYPE_META[project.project_type] ?? TYPE_META.residential;
   const statusMeta = STATUS_META[project.status] ?? STATUS_META.upcoming;
   const TypeIcon = typeMeta.icon;
+
+  const availableBhkTypes = Array.from(
+    new Set(
+      project.towers.flatMap(t => t.flats)
+        .filter(f => f.status === "available")
+        .map(f => f.flat_type)
+    )
+  ).slice(0, 4);
 
   return (
     <Link
@@ -169,6 +178,18 @@ function ProjectCard({ project }: { project: Project }) {
             </div>
           ))}
         </div>
+
+        {/* BHK type chips */}
+        {availableBhkTypes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {availableBhkTypes.map(type => (
+              <span key={type} className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                style={{ background: "rgba(0,113,227,0.07)", color: "#0071e3", border: "1px solid rgba(0,113,227,0.15)" }}>
+                {FLAT_TYPE_LABELS[type] ?? type}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Price + CTA */}
         <div className="flex items-center justify-between">

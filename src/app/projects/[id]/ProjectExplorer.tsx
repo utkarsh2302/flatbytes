@@ -996,14 +996,48 @@ export default function ProjectExplorer({ project }: Props) {
 
                 {/* Available flat list */}
                 <div className="apple-card p-5">
-                  <h2 className="text-tile mb-4" style={{ color:"#1d1d1f" }}>
+                  <h2 className="text-tile mb-3" style={{ color:"#1d1d1f" }}>
                     Available Units
                     <span className="text-body ml-2" style={{ color:"rgba(0,0,0,0.42)", fontWeight:400 }}>
-                      ({filteredFlats.filter(f=>f.status==="available").length})
+                      ({allFlats.filter(f=>f.status==="available").length})
                     </span>
                   </h2>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {filteredFlats.filter(f=>f.status==="available").slice(0,20).map(flat => (
+                  {/* BHK type chips — click to jump to floor view filtered */}
+                  {(() => {
+                    const typeCounts: Record<string, number> = {};
+                    for (const f of allFlats) {
+                      if (f.status === "available") typeCounts[f.flat_type] = (typeCounts[f.flat_type] ?? 0) + 1;
+                    }
+                    const entries = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
+                    if (entries.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {entries.map(([type, count]) => (
+                          <button key={type}
+                            onClick={() => {
+                              setFilters(prev => ({ ...prev, flatType: [type as import("@/lib/types").FlatType] }));
+                              setView("floor");
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                            style={{ background:"rgba(0,113,227,0.08)", color:"#0071e3", border:"1px solid rgba(0,113,227,0.18)", cursor:"pointer" }}>
+                            {FLAT_TYPE_LABELS[type as import("@/lib/types").FlatType] ?? type}
+                            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"#0071e3", color:"#fff", minWidth:18, textAlign:"center" }}>{count}</span>
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, flatType: [] }));
+                            setView("floor");
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                          style={{ background:"#f5f5f7", color:"rgba(0,0,0,0.56)", border:"1px solid rgba(0,0,0,0.1)", cursor:"pointer" }}>
+                          View all →
+                        </button>
+                      </div>
+                    );
+                  })()}
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {allFlats.filter(f=>f.status==="available").slice(0,20).map(flat => (
                       <button key={flat.id} onClick={() => setSelectedFlat(flat)}
                         className="w-full flex items-center justify-between p-3.5 rounded-standard text-left"
                         style={{ background:"#f5f5f7", transition:"background 0.15s" }}

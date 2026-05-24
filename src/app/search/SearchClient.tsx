@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   SlidersHorizontal, X, MapPin, Building2, ArrowRight,
-  ChevronDown, ChevronUp, Phone,
+  ChevronDown, Phone,
 } from "lucide-react";
 import type { FlatType } from "@/lib/types";
 import type { FlatWithProject } from "@/lib/data";
@@ -96,77 +96,83 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
         className="sticky top-[48px] z-20 border-b"
         style={{ background: "#fff", borderColor: "rgba(0,0,0,0.08)" }}
       >
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* Filter toggle button */}
-          <button
-            onClick={() => setShowFilters(true)}
-            className="flex items-center gap-2 px-4 rounded-xl font-medium transition-all shrink-0"
-            style={{
-              height: 40, fontSize: "0.875rem",
-              background: activeFilterCount > 0 ? "#1d1d1f" : "#f0f0f2",
-              color: activeFilterCount > 0 ? "#fff" : "#1d1d1f",
-              border: "none", cursor: "pointer",
-            }}
-            aria-label="Open filters"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span
-                className="flex items-center justify-center rounded-full text-xs font-bold"
-                style={{ width: 20, height: 20, background: "#0071e3", color: "#fff" }}
-              >
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {/* Active filter pills */}
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-            {selectedTypes.map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedTypes((prev) => prev.filter((x) => x !== t))}
-                className="filter-chip active shrink-0"
-              >
-                {FLAT_TYPE_LABELS[t]}
-                <X className="w-3 h-3" />
-              </button>
-            ))}
+        {/* Row 1: BHK quick-select + Sort */}
+        <div className="max-w-6xl mx-auto px-4 pt-2.5 pb-2 flex items-center gap-2">
+          {/* BHK quick chips — tap to toggle, always visible */}
+          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar flex-1" style={{ scrollbarWidth: "none" }}>
+            {BHK_OPTS.map(({ type, emoji }) => {
+              const active = selectedTypes.includes(type);
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleType(type)}
+                  className="shrink-0 flex items-center gap-1 px-2.5 rounded-xl font-medium transition-all"
+                  style={{
+                    height: 36, fontSize: "0.8rem",
+                    background: active ? "#0071e3" : "#f0f0f2",
+                    color: active ? "#fff" : "rgba(0,0,0,0.6)",
+                    border: active ? "1.5px solid #0071e3" : "1.5px solid transparent",
+                    cursor: "pointer",
+                  }}
+                  aria-pressed={active}
+                  aria-label={`Filter by ${FLAT_TYPE_LABELS[type]}`}
+                >
+                  <span style={{ fontSize: "0.85rem" }}>{emoji}</span>
+                  <span>{FLAT_TYPE_LABELS[type]}</span>
+                </button>
+              );
+            })}
+            {/* Budget filter pill if active */}
             {maxPrice && (
               <button
                 onClick={() => setMaxPrice(undefined)}
-                className="filter-chip active shrink-0"
+                className="shrink-0 flex items-center gap-1 px-2.5 rounded-xl font-medium"
+                style={{ height: 36, fontSize: "0.8rem", background: "#f59e0b", color: "#fff", border: "1.5px solid #f59e0b", cursor: "pointer" }}
               >
-                Under {formatPrice(maxPrice)}
-                <X className="w-3 h-3" />
+                Under {formatPrice(maxPrice)} <X className="w-3 h-3" />
               </button>
             )}
           </div>
 
-          {/* Sort */}
-          <div className="ml-auto shrink-0 relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="appearance-none rounded-xl px-3 pr-8 font-medium"
+          {/* Budget + sort controls */}
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(true)}
+              className="flex items-center gap-1.5 px-3 rounded-xl font-medium"
               style={{
-                height: 40, fontSize: "0.8125rem", border: "1.5px solid rgba(0,0,0,0.1)",
-                background: "#fff", color: "#1d1d1f", cursor: "pointer", outline: "none",
+                height: 36, fontSize: "0.8rem",
+                background: maxPrice ? "#1d1d1f" : "#f0f0f2",
+                color: maxPrice ? "#fff" : "rgba(0,0,0,0.6)",
+                border: "none", cursor: "pointer",
               }}
-              aria-label="Sort flats"
+              aria-label="Budget filter"
             >
-              <option value="area_desc">Largest First</option>
-              <option value="area_asc">Smallest First</option>
-              <option value="floor_desc">High Floor First</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "rgba(0,0,0,0.4)" }} />
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Budget</span>
+            </button>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="appearance-none rounded-xl px-2.5 pr-7 font-medium"
+                style={{
+                  height: 36, fontSize: "0.8rem", border: "1.5px solid rgba(0,0,0,0.1)",
+                  background: "#fff", color: "#1d1d1f", cursor: "pointer", outline: "none",
+                }}
+                aria-label="Sort flats"
+              >
+                <option value="area_desc">Largest</option>
+                <option value="area_asc">Smallest</option>
+                <option value="floor_desc">High Floor</option>
+              </select>
+              <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "rgba(0,0,0,0.4)" }} />
+            </div>
           </div>
         </div>
 
         {/* Result count */}
-        <div className="max-w-6xl mx-auto px-4 pb-2.5">
-          <p style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.45)", fontWeight: 500 }}>
+        <div className="max-w-6xl mx-auto px-4 pb-2">
+          <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", fontWeight: 500 }}>
             {filtered.length === 0
               ? "No available flats match your filters"
               : `${filtered.length} available flat${filtered.length !== 1 ? "s" : ""} across ${grouped.length} project${grouped.length !== 1 ? "s" : ""}`}
@@ -249,9 +255,7 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
       {/* ── Filter bottom-sheet (mobile + desktop) ──── */}
       {showFilters && (
         <FilterSheet
-          selectedTypes={selectedTypes}
           maxPrice={maxPrice}
-          onToggleType={toggleType}
           onSetMaxPrice={setMaxPrice}
           onApply={applyFilters}
           onClose={() => setShowFilters(false)}
@@ -286,8 +290,8 @@ function FlatCard({
       {/* Top section */}
       <div className="p-4">
         {/* BHK + Status row */}
-        <div className="flex items-center justify-between mb-3">
-          <span style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.025em" }}>
+        <div className="flex items-center justify-between mb-1">
+          <span style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.025em" }}>
             {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type}
           </span>
           <span
@@ -306,8 +310,13 @@ function FlatCard({
           </span>
         </div>
 
+        {/* Flat number */}
+        <div style={{ fontSize: "0.8rem", color: "rgba(0,0,0,0.42)", marginBottom: 8 }}>
+          Flat {flat.flat_number}
+        </div>
+
         {/* Details row */}
-        <div className="flex items-center gap-3 mb-3" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.5)" }}>
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-3" style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.5)" }}>
           <span>{flat.carpet_area_sqft} sq ft</span>
           <span style={{ opacity: 0.4 }}>·</span>
           <span>Floor {flat.floor}</span>
@@ -320,11 +329,11 @@ function FlatCard({
         </div>
 
         {/* Pricing */}
-        <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#0071e3", letterSpacing: "-0.02em" }}>
+        <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "#0071e3", letterSpacing: "-0.02em" }}>
           On Request
         </div>
         <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
-          WhatsApp for pricing
+          Contact for pricing details
         </div>
       </div>
 
@@ -392,28 +401,22 @@ function EmptyState({ onReset }: { onReset: () => void }) {
 
 /* ── Filter sheet (bottom-sheet + desktop overlay) ─────────── */
 function FilterSheet({
-  selectedTypes, maxPrice, onToggleType, onSetMaxPrice, onApply, onClose,
+  maxPrice, onSetMaxPrice, onApply, onClose,
 }: {
-  selectedTypes: FlatType[];
   maxPrice?: number;
-  onToggleType: (t: FlatType) => void;
   onSetMaxPrice: (v?: number) => void;
   onApply: () => void;
   onClose: () => void;
 }) {
-  const [budgetOpen, setBudgetOpen] = useState(true);
-  const [bhkOpen, setBhkOpen] = useState(true);
-
   return (
     <>
       <div className="bottom-sheet-backdrop" onClick={onClose} />
       <div
-        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:fixed sm:right-4 sm:bottom-4 sm:w-80 z-50"
+        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:fixed sm:right-4 sm:bottom-[68px] sm:w-72 z-50"
         style={{
           background: "#fff",
           borderRadius: "20px 20px 0 0",
           boxShadow: "0 -8px 40px rgba(0,0,0,0.15)",
-          maxHeight: "85dvh",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -424,7 +427,7 @@ function FilterSheet({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0">
-          <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#1d1d1f" }}>Filters</h3>
+          <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#1d1d1f" }}>Budget Range</h3>
           <button onClick={onClose} aria-label="Close filters"
             style={{ background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
@@ -432,79 +435,36 @@ function FilterSheet({
           </button>
         </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-5 pb-2 space-y-5">
-          {/* BHK */}
-          <div>
-            <button
-              className="flex items-center justify-between w-full pb-2"
-              onClick={() => setBhkOpen((v) => !v)}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1d1d1f" }}>Bedrooms</span>
-              {bhkOpen ? <ChevronUp className="w-4 h-4 opacity-50" /> : <ChevronDown className="w-4 h-4 opacity-50" />}
-            </button>
-            {bhkOpen && (
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {BHK_OPTS.map(({ type, emoji }) => (
-                  <button
-                    key={type}
-                    onClick={() => onToggleType(type)}
-                    className={`flat-finder-btn ${selectedTypes.includes(type) ? "selected" : ""}`}
-                    style={{ background: selectedTypes.includes(type) ? "#0071e3" : "#f5f5f7", borderColor: selectedTypes.includes(type) ? "#0071e3" : "transparent", color: selectedTypes.includes(type) ? "#fff" : "#1d1d1f", height: 60 }}
-                    aria-pressed={selectedTypes.includes(type)}
-                  >
-                    <span className="emoji">{emoji}</span>
-                    <span>{FLAT_TYPE_LABELS[type]}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Budget */}
-          <div>
-            <button
-              className="flex items-center justify-between w-full pb-2"
-              onClick={() => setBudgetOpen((v) => !v)}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1d1d1f" }}>Budget</span>
-              {budgetOpen ? <ChevronUp className="w-4 h-4 opacity-50" /> : <ChevronDown className="w-4 h-4 opacity-50" />}
-            </button>
-            {budgetOpen && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {BUDGET_OPTS.map(({ label, max }) => {
-                  const active = maxPrice === max;
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => onSetMaxPrice(active ? undefined : max)}
-                      className="rounded-xl font-medium transition-all"
-                      style={{
-                        height: 44, fontSize: "0.8125rem", border: `1.5px solid ${active ? "#0071e3" : "rgba(0,0,0,0.1)"}`,
-                        background: active ? "rgba(0,113,227,0.06)" : "#f5f5f7",
-                        color: active ? "#0071e3" : "#1d1d1f", cursor: "pointer",
-                      }}
-                      aria-pressed={active}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        {/* Budget options */}
+        <div className="px-5 pb-4 grid grid-cols-2 gap-2">
+          {BUDGET_OPTS.map(({ label, max }) => {
+            const active = maxPrice === max;
+            return (
+              <button
+                key={label}
+                onClick={() => onSetMaxPrice(active ? undefined : max)}
+                className="rounded-xl font-medium transition-all"
+                style={{
+                  height: 48, fontSize: "0.875rem", border: `1.5px solid ${active ? "#0071e3" : "rgba(0,0,0,0.1)"}`,
+                  background: active ? "rgba(0,113,227,0.06)" : "#f5f5f7",
+                  color: active ? "#0071e3" : "#1d1d1f", cursor: "pointer",
+                }}
+                aria-pressed={active}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Footer apply button */}
-        <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+        <div className="px-5 pb-5 flex-shrink-0">
           <button
             onClick={onApply}
             className="w-full flex items-center justify-center gap-2 rounded-2xl font-semibold"
             style={{ height: 52, background: "#0071e3", color: "#fff", fontSize: "1rem", border: "none", cursor: "pointer" }}
           >
-            Show Matching Flats
+            Apply Budget
           </button>
         </div>
       </div>
