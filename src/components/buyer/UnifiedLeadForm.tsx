@@ -200,8 +200,8 @@ export default function UnifiedLeadForm({ projectId, projectName, flat, onClose 
                     <span style={{ fontSize: "0.8125rem", color: "#0071e3", fontWeight: 500 }}>
                       {FLAT_TYPE_LABELS[flat.flat_type]} · Flat {flat.flat_number}
                     </span>
-                    <span style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.4)", marginLeft: "auto" }}>
-                      ₹{(flat.total_price / 10_000_000).toFixed(2)} Cr
+                    <span style={{ fontSize: "0.78rem", color: "#0071e3", fontWeight: 600, marginLeft: "auto" }}>
+                      On Request
                     </span>
                   </div>
                 )}

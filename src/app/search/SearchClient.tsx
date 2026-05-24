@@ -47,7 +47,7 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
   const [flats] = useState(initialFlats);
   const [selectedTypes, setSelectedTypes] = useState<FlatType[]>(initialTypes);
   const [maxPrice, setMaxPrice] = useState<number | undefined>(initialMaxPrice);
-  const [sortBy, setSortBy] = useState<"price_asc" | "price_desc" | "area_desc">("price_asc");
+  const [sortBy, setSortBy] = useState<"area_desc" | "area_asc" | "floor_desc">("area_desc");
   const [showFilters, setShowFilters] = useState(false);
   const [leadTarget, setLeadTarget] = useState<{ projectId: string; projectName: string; flat?: FlatWithProject } | null>(null);
 
@@ -68,8 +68,8 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
     if (selectedTypes.length > 0) result = result.filter((f) => selectedTypes.includes(f.flat_type));
     if (maxPrice) result = result.filter((f) => f.total_price <= maxPrice);
     result = [...result].sort((a, b) => {
-      if (sortBy === "price_asc")  return a.total_price - b.total_price;
-      if (sortBy === "price_desc") return b.total_price - a.total_price;
+      if (sortBy === "area_asc")   return a.carpet_area_sqft - b.carpet_area_sqft;
+      if (sortBy === "floor_desc") return b.floor - a.floor;
       return b.carpet_area_sqft - a.carpet_area_sqft;
     });
     return result;
@@ -156,9 +156,9 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
               }}
               aria-label="Sort flats"
             >
-              <option value="price_asc">Price: Low → High</option>
-              <option value="price_desc">Price: High → Low</option>
               <option value="area_desc">Largest First</option>
+              <option value="area_asc">Smallest First</option>
+              <option value="floor_desc">High Floor First</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "rgba(0,0,0,0.4)" }} />
           </div>
@@ -311,15 +311,13 @@ function FlatCard({
           )}
         </div>
 
-        {/* Price — big and clear */}
-        <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.03em" }}>
-          {formatPrice(flat.total_price)}
+        {/* Pricing */}
+        <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#0071e3", letterSpacing: "-0.02em" }}>
+          On Request
         </div>
-        {flat.price_per_sqft && (
-          <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
-            ₹{flat.price_per_sqft.toLocaleString("en-IN")} / sq ft
-          </div>
-        )}
+        <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
+          WhatsApp for pricing
+        </div>
       </div>
 
       {/* Actions */}

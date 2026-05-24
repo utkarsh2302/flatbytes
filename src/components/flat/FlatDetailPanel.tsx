@@ -18,12 +18,6 @@ interface Props {
   onOpenTour?: () => void;
 }
 
-function formatPrice(p: number) {
-  if (p >= 10000000) return `₹${(p / 10000000).toFixed(2)} Cr`;
-  if (p >= 100000) return `₹${(p / 100000).toFixed(1)} L`;
-  return `₹${p.toLocaleString("en-IN")}`;
-}
-
 function calcEMI(principal: number, annualRate: number, tenureYears: number) {
   const r = annualRate / 100 / 12;
   const n = tenureYears * 12;
@@ -93,7 +87,7 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
   const heatBg     = lifeData.heat.level === "low" ? "rgba(52,199,89,0.08)" : lifeData.heat.level === "moderate" ? "rgba(255,149,0,0.08)" : "rgba(255,59,48,0.08)";
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-    `Hi, I'm interested in Flat ${flat.flat_number} (${FLAT_TYPE_LABELS[flat.flat_type]}, Floor ${flat.floor}) at ${projectName}. Price: ${formatPrice(flat.total_price)}. Please share details.`
+    `Hi, I'm interested in Flat ${flat.flat_number} (${FLAT_TYPE_LABELS[flat.flat_type]}, Floor ${flat.floor}) at ${projectName}. Please share the pricing and availability details.`
   )}`;
 
   const handleWishlist = () => {
