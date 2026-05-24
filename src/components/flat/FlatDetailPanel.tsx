@@ -198,24 +198,20 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {/* Facing */}
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+            <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: "rgba(0,113,227,0.09)", color: "#0055b3", border: "1px solid rgba(0,113,227,0.15)" }}>
               🧭 {lifeData.facingLabel}
             </span>
-            {/* Vastu */}
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+            <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: vastuBg, color: vastuColor, border: `1px solid ${vastuColor}30` }}>
               ✨ {vastuLabel}
             </span>
-            {/* Sunlight */}
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+            <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: "rgba(245,158,11,0.08)", color: "#b45309", border: "1px solid rgba(245,158,11,0.2)" }}>
               {sunLabel}
             </span>
-            {/* Heat */}
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+            <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
               style={{ background: heatBg, color: heatColor, border: `1px solid ${heatColor}30` }}>
               {heatLabel}
             </span>

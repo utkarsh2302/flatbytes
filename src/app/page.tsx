@@ -71,7 +71,7 @@ export default async function HomePage() {
         <div className="absolute pointer-events-none" style={{ top: "-10%", left: "10%", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,113,227,0.22), transparent 70%)" }} />
         <div className="absolute pointer-events-none" style={{ bottom: "0%", right: "5%", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(28,199,127,0.16), transparent 70%)" }} />
 
-        <div className="relative max-w-7xl mx-auto px-5 pt-28 pb-16 sm:pt-32 sm:pb-24">
+        <div className="relative max-w-7xl mx-auto px-5 pt-20 pb-12 sm:pt-32 sm:pb-24">
           <div className="grid lg:grid-cols-2 gap-10 items-start">
 
             {/* Left — copy + finder widget */}
@@ -383,13 +383,13 @@ export default async function HomePage() {
           <p className="mt-4" style={{ fontSize: "1rem", color: "rgba(255,255,255,0.55)" }}>
             Browse verified projects, explore in 3D, and book with confidence.
           </p>
-          <div className="flex items-center justify-center gap-3 mt-8 flex-wrap">
-            <Link href="/search" className="btn-primary" style={{ padding: "14px 32px", fontSize: "0.9375rem" }}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-8">
+            <Link href="/search" className="btn-primary text-center" style={{ padding: "14px 32px", fontSize: "0.9375rem" }}>
               Browse Available Flats
             </Link>
             <Link
               href="/projects"
-              className="px-7 py-3.5 rounded-full font-medium"
+              className="px-7 py-3.5 rounded-full font-medium text-center"
               style={{ background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.18)", fontSize: "0.9375rem", textDecoration: "none" }}
             >
               All Projects

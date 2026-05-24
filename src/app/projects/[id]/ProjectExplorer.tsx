@@ -173,10 +173,10 @@ export default function ProjectExplorer({ project }: Props) {
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Building2 className="w-4 h-4 shrink-0" style={{ color:"#0071e3" }}/>
           <div className="min-w-0">
-            <div className="font-semibold truncate" style={{ fontSize:"0.875rem", color:"#1d1d1f", letterSpacing:"-0.01em", maxWidth:"min(220px,38vw)" }}>
+            <div className="font-semibold truncate" style={{ fontSize:"0.875rem", color:"#1d1d1f", letterSpacing:"-0.01em", maxWidth:"min(200px,46vw)" }}>
               {project.name}
             </div>
-            <div className="flex items-center gap-1 truncate" style={{ fontSize:"0.7rem", color:"rgba(0,0,0,0.42)", maxWidth:"min(220px,38vw)" }}>
+            <div className="flex items-center gap-1 truncate" style={{ fontSize:"0.7rem", color:"rgba(0,0,0,0.42)", maxWidth:"min(200px,46vw)" }}>
               <MapPin className="w-2.5 h-2.5 shrink-0"/>
               {project.location}
             </div>
@@ -220,10 +220,11 @@ export default function ProjectExplorer({ project }: Props) {
             { id:"overview", icon:<BarChart2 className="w-3.5 h-3.5"/>, label:"Info" },
           ] as const).map(v => (
             <button key={v.id} onClick={() => setView(v.id)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-standard text-micro font-normal transition-all"
-              style={view===v.id
+              className="flex items-center justify-center gap-1 px-2.5 sm:px-3 rounded-standard text-micro font-normal transition-all"
+              style={{ ...( view===v.id
                 ? { background:"#ffffff", color:"#1d1d1f", boxShadow:"rgba(0,0,0,0.12) 0px 1px 4px 0px" }
-                : { background:"transparent", color:"rgba(0,0,0,0.48)" }}>
+                : { background:"transparent", color:"rgba(0,0,0,0.48)" }),
+                minHeight: 36, minWidth: 36 }}>
               {v.icon}
               <span className="hidden sm:inline">{v.label}</span>
             </button>
@@ -248,9 +249,9 @@ export default function ProjectExplorer({ project }: Props) {
       {/* ── Main ────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* Filter sidebar */}
+        {/* Desktop filter sidebar */}
         {showFilters && (
-          <aside className="shrink-0 w-72 overflow-y-auto"
+          <aside className="hidden lg:block shrink-0 w-72 overflow-y-auto"
             style={{ background:"#ffffff", borderRight:"1px solid rgba(0,0,0,0.08)" }}>
             <div className="p-4">
               <FlatFilters filters={filters} onChange={setFilters}
@@ -259,6 +260,40 @@ export default function ProjectExplorer({ project }: Props) {
                 onClose={() => setShowFilters(false)}/>
             </div>
           </aside>
+        )}
+
+        {/* Mobile filter bottom sheet */}
+        {showFilters && (
+          <div className="lg:hidden fixed inset-0 z-50">
+            <div className="absolute inset-0" style={{ background:"rgba(0,0,0,0.5)" }}
+              onClick={() => setShowFilters(false)}/>
+            <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl overflow-hidden flex flex-col"
+              style={{ background:"#fff", maxHeight:"88vh", animation:"slideUpSheet 0.32s cubic-bezier(0.34,1.2,0.64,1)" }}>
+              <div className="relative flex justify-center pt-3 pb-0 shrink-0">
+                <div className="w-10 h-1 rounded-full" style={{ background:"rgba(0,0,0,0.15)" }}/>
+              </div>
+              <div className="flex items-center justify-between px-5 py-3 shrink-0" style={{ borderBottom:"1px solid rgba(0,0,0,0.08)" }}>
+                <div className="flex items-center gap-2">
+                  <span style={{ fontWeight:700, fontSize:"1rem", color:"#1d1d1f" }}>Filters</span>
+                  {filterCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background:"#0071e3", color:"#fff" }}>
+                      {filterCount}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => setShowFilters(false)}
+                  style={{ padding:8, background:"none", border:"none", cursor:"pointer", color:"rgba(0,0,0,0.4)", display:"flex" }}>
+                  <X className="w-5 h-5"/>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5">
+                <FlatFilters filters={filters} onChange={setFilters}
+                  totalFloors={project.total_floors ?? 30}
+                  maxPrice={project.price_max ?? 60000000}
+                  onClose={() => setShowFilters(false)}/>
+              </div>
+            </div>
+          </div>
         )}
 
         <main className="flex-1 relative overflow-hidden">
@@ -529,7 +564,7 @@ export default function ProjectExplorer({ project }: Props) {
                     </div>
 
                     {/* Filter + sort strip */}
-                    <div className="flex items-center gap-2 px-5 pb-2.5 flex-wrap">
+                    <div className="pill-scroll items-center gap-2 px-5 pb-2.5">
                       {/* Available only toggle */}
                       <button
                         onClick={() => setShowAvailOnly(v => !v)}
@@ -608,7 +643,7 @@ export default function ProjectExplorer({ project }: Props) {
                       </div>
                     ) : (
                       <div className="grid gap-3 sm:gap-4"
-                        style={{ gridTemplateColumns:"repeat(auto-fill, minmax(190px, 1fr))" }}>
+                        style={{ gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))" }}>
                         {floorFlats.map(flat => {
                           const bc = ST_BORDER[flat.status] ?? "#e5e5ea";
                           const bg = ST_BG[flat.status]     ?? "rgba(0,0,0,0.02)";
@@ -617,7 +652,7 @@ export default function ProjectExplorer({ project }: Props) {
                           const isBestValue = flat.id === bestValueId;
                           return (
                             <button key={flat.id} onClick={() => setSelectedFlat(flat)}
-                              className="relative text-left rounded-2xl transition-all"
+                              className="flat-card relative text-left rounded-2xl transition-all"
                               style={{
                                 background: active ? bg.replace("0.06","0.14") : "#fff",
                                 borderTop: "1px solid rgba(0,0,0,0.07)",
@@ -942,13 +977,19 @@ export default function ProjectExplorer({ project }: Props) {
           <div className="absolute left-0 right-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
             style={{
               background:"#ffffff", pointerEvents:"auto",
-              maxHeight:"92svh",
+              maxHeight:"93svh",
               animation:"slideUpSheet 0.32s cubic-bezier(0.34,1.2,0.64,1)",
+              paddingBottom:"env(safe-area-inset-bottom, 0px)",
             }}>
-            {/* Pull handle */}
-            <div className="shrink-0 flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full" style={{ background:"rgba(0,0,0,0.15)" }}/>
-            </div>
+            {/* Pull handle area — tap to close */}
+            <button
+              onClick={() => setSelectedFlat(null)}
+              className="shrink-0 flex flex-col items-center gap-1 pt-3 pb-2 w-full"
+              style={{ background:"none", border:"none", cursor:"pointer" }}
+              aria-label="Close flat details">
+              <div className="w-10 h-1 rounded-full" style={{ background:"rgba(0,0,0,0.18)" }}/>
+              <span style={{ fontSize:"0.65rem", color:"rgba(0,0,0,0.28)", letterSpacing:"0.04em" }}>tap to close</span>
+            </button>
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth:"none" }}>
               <FlatDetailPanel flat={selectedFlat} projectName={project.name} projectId={project.id}
                 onClose={() => setSelectedFlat(null)}
@@ -983,9 +1024,10 @@ export default function ProjectExplorer({ project }: Props) {
           href={`https://wa.me/?text=${encodeURIComponent(`Hi, I'm interested in ${project.name} at ${project.location}. Please share availability and pricing.`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="md:hidden fixed bottom-20 right-4 z-30 flex items-center justify-center rounded-full shadow-xl"
+          className="md:hidden fixed right-4 z-30 flex items-center justify-center rounded-full"
           style={{
-            width: 52, height: 52,
+            bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+            width: 56, height: 56,
             background: "linear-gradient(135deg,#25d366 0%,#128c4a 100%)",
             boxShadow: "0 4px 20px rgba(37,211,102,0.45), 0 2px 8px rgba(0,0,0,0.2)",
           }}

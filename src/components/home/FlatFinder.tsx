@@ -81,12 +81,13 @@ export default function FlatFinder() {
       >
         Step 2 — What&apos;s your budget?
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-0.5 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {BUDGET_OPTIONS.map(({ label }, idx) => (
           <button
             key={label}
             onClick={() => setSelectedBudgetIdx(idx === selectedBudgetIdx ? null : idx)}
-            className={`budget-btn ${selectedBudgetIdx === idx ? "selected" : ""}`}
+            className={`budget-btn shrink-0 ${selectedBudgetIdx === idx ? "selected" : ""}`}
+            style={{ whiteSpace: "nowrap" }}
             aria-pressed={selectedBudgetIdx === idx}
           >
             {label}

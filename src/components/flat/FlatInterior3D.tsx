@@ -1251,8 +1251,8 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
       {/* ── Unified bottom nav: view toggle + room teleport ── */}
       {!isOffice && (
         <div
-          className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-2 px-4 pb-4 pt-10"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.18) 72%, transparent 100%)', pointerEvents: 'none' }}
+          className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-2 px-4 pt-10"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.18) 72%, transparent 100%)', pointerEvents: 'none', paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))' }}
         >
           {/* View toggle pill */}
           <div
@@ -1264,10 +1264,11 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
                 const target = activeRoom ?? layout.find((r) => r.id === 'living')?.id ?? layout[0].id
                 goToRef.current?.(target)
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-              style={camMode === 'walk'
+              className="flex items-center gap-2 rounded-xl text-sm font-semibold transition-all"
+              style={{ ...( camMode === 'walk'
                 ? { background: '#fff', color: '#0a0a0a', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }}
+                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }),
+                padding: '10px 16px', minHeight: 44, minWidth: 80 }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <circle cx="12" cy="7" r="3"/><path d="M12 10v4M9 21l3-7 3 7"/>
@@ -1276,10 +1277,11 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
             </button>
             <button
               onClick={() => setOverviewRef.current?.()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-              style={camMode === 'overview'
+              className="flex items-center gap-2 rounded-xl text-sm font-semibold transition-all"
+              style={{ ...(camMode === 'overview'
                 ? { background: '#fff', color: '#0a0a0a', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }}
+                : { background: 'transparent', color: 'rgba(255,255,255,0.55)' }),
+                padding: '10px 16px', minHeight: 44, minWidth: 96 }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -1300,10 +1302,11 @@ export default function FlatInterior3D({ flat, isOffice = false }: Props) {
                 <button
                   key={r.id}
                   onClick={() => goToRef.current?.(r.id)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
-                  style={isActive
+                  className="shrink-0 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
+                  style={{ ...(isActive
                     ? { background: 'rgba(255,255,255,0.96)', color: '#0a0a0a', boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }
-                    : { background: 'rgba(20,20,30,0.75)', color: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    : { background: 'rgba(20,20,30,0.75)', color: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }),
+                    minHeight: 40 }}
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full shrink-0"

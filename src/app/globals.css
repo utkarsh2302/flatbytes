@@ -484,3 +484,48 @@ input[type="range"] { accent-color: #0071e3; }
 }
 .scroll-x-snap > * { scroll-snap-align: start; }
 .scroll-x-snap::-webkit-scrollbar { display: none; }
+
+/* ── Hide scrollbars globally on mobile overflow-x ─────────── */
+@media (max-width: 1023px) {
+  [style*="scrollbarWidth: none"]::-webkit-scrollbar,
+  .overflow-x-auto::-webkit-scrollbar { display: none; }
+}
+
+/* ── Mobile active/pressed state feedback ──────────────────── */
+@media (pointer: coarse) {
+  button:active, [role="button"]:active {
+    opacity: 0.75;
+    transform: scale(0.97);
+    transition: opacity 0.08s, transform 0.08s;
+  }
+  /* Don't apply to 3D canvas region */
+  canvas:active { opacity: 1; transform: none; }
+}
+
+/* ── Horizontal pill strip (budget, filters, rooms) ─────────── */
+.pill-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pill-scroll::-webkit-scrollbar { display: none; }
+.pill-scroll > * { flex-shrink: 0; }
+
+/* ── Bottom sheet backdrop blur ─────────────────────────────── */
+@supports (backdrop-filter: blur(8px)) {
+  .sheet-backdrop {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* ── Flat card press state on touch ─────────────────────────── */
+@media (pointer: coarse) {
+  .flat-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
