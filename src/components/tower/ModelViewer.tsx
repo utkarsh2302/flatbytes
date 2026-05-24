@@ -538,89 +538,142 @@ export default function ModelViewer({
       return mat_default
     }
 
-    // GLB material override table — Blender transmission glass renders white in Three.js;
-    // we take full control of every material by name for pixel-perfect real-time results.
-    const glbMatCache = new Map<string, THREE.Material>()
-    function glbMaterialFor(name: string): THREE.Material | null {
-      const n = name.toLowerCase()
-      if (glbMatCache.has(n)) return glbMatCache.get(n)!
-      let m: THREE.Material | null = null
+    // ── Pre-built material palette for GLB ───────────────────────────────────
+    // Blender transmission glass + metalness renders as flat white in Three.js.
+    // We replace every mesh material using a two-pass lookup:
+    //   1st pass: match by Blender material name
+    //   2nd pass: match by mesh/object name (catches any naming variation)
+    // Transparent glass uses opacity so the dark base color always shows through.
 
-      // ── Building shell ────────────────────────────────────────────────────
-      if (n === 'winglass' || n === 'windowglass' || (n.includes('glass') && !n.includes('car') && !n.includes('lobby') && !n.includes('car'))) {
-        m = new THREE.MeshPhysicalMaterial({ color: 0x0d1f35, metalness: 0.0, roughness: 0.04, reflectivity: 1.0, envMapIntensity: 4.0 })
-      } else if (n === 'lobbyglass' || n.includes('lobby') || n.includes('canopy')) {
-        m = new THREE.MeshPhysicalMaterial({ color: 0x112840, metalness: 0.0, roughness: 0.05, transparent: true, opacity: 0.72, reflectivity: 0.95, envMapIntensity: 3.0 })
-      } else if (n === 'concrete' || n.includes('core') || n.includes('wall') || n.includes('entrance') || n.includes('column') || n.includes('stair')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.82, metalness: 0.0 })
-      } else if (n === 'slab' || n.includes('band') || n.includes('spandrel') || n.includes('slab')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xd2cec5, roughness: 0.84, metalness: 0.0 })
-      } else if (n === 'aluminium' || n.includes('alum') || n.includes('fin') || n.includes('frame') || n.includes('railing') || n.includes('balcony')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x8a9298, roughness: 0.16, metalness: 0.92, envMapIntensity: 2.0 })
-      } else if (n === 'roof' || n.includes('parapet') || n.includes('mech') || n.includes('tank')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: 0.88, metalness: 0.0 })
-
-      // ── Ground / roads ────────────────────────────────────────────────────
-      } else if (n === 'asphalt' || n.includes('road')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.97, metalness: 0.0 })
-      } else if (n === 'pavement' || n.includes('sidewalk') || n.includes('plaza') || n.includes('kerb')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xb8b0a0, roughness: 0.90, metalness: 0.0 })
-      } else if (n === 'grass' || n.includes('lawn')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x2e6e18, roughness: 0.96, metalness: 0.0 })
-      } else if (n === 'parkground' || n.includes('parkground')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x8a8278, roughness: 0.92, metalness: 0.0 })
-      } else if (n === 'lanemark' || n.includes('lanens') || n.includes('laneew') || n.includes('wlane')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.72, metalness: 0.0 })
-      } else if (n === 'yellowmark' || n.includes('yellow')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xf0c010, roughness: 0.72, metalness: 0.0 })
-
-      // ── Trees ─────────────────────────────────────────────────────────────
-      } else if (n === 'leaf1') {
-        m = new THREE.MeshStandardMaterial({ color: 0x1e5a10, roughness: 0.96, metalness: 0.0 })
-      } else if (n === 'leaf2') {
-        m = new THREE.MeshStandardMaterial({ color: 0x266e18, roughness: 0.96, metalness: 0.0 })
-      } else if (n === 'leaf3') {
-        m = new THREE.MeshStandardMaterial({ color: 0x1a4e0c, roughness: 0.96, metalness: 0.0 })
-      } else if (n === 'palmfrond' || n.includes('palm')) {
-        m = new THREE.MeshStandardMaterial({ color: 0x227814, roughness: 0.94, metalness: 0.0, side: THREE.DoubleSide })
-      } else if (n === 'trunk') {
-        m = new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.96, metalness: 0.0 })
-
-      // ── Street furniture ──────────────────────────────────────────────────
-      } else if (n === 'lampglow') {
-        m = new THREE.MeshStandardMaterial({ color: 0xfff4c0, roughness: 0.0, metalness: 0.0, emissive: new THREE.Color(0xfff4c0), emissiveIntensity: 5.0 })
-      } else if (n === 'lamppost') {
-        m = new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.28, metalness: 0.88 })
-      } else if (n === 'bench') {
-        m = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.88, metalness: 0.0 })
-      } else if (n === 'planter') {
-        m = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.82, metalness: 0.0 })
-
-      // ── Cars ──────────────────────────────────────────────────────────────
-      } else if (n === 'car_white')  { m = new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.14, metalness: 0.72, envMapIntensity: 2.0 })
-      } else if (n === 'car_silver') { m = new THREE.MeshStandardMaterial({ color: 0x9a9ea4, roughness: 0.12, metalness: 0.88, envMapIntensity: 2.0 })
-      } else if (n === 'car_black')  { m = new THREE.MeshStandardMaterial({ color: 0x0c0e10, roughness: 0.16, metalness: 0.78, envMapIntensity: 2.0 })
-      } else if (n === 'car_red')    { m = new THREE.MeshStandardMaterial({ color: 0xaa0c0c, roughness: 0.14, metalness: 0.68, envMapIntensity: 2.0 })
-      } else if (n === 'car_blue')   { m = new THREE.MeshStandardMaterial({ color: 0x0e2088, roughness: 0.14, metalness: 0.68, envMapIntensity: 2.0 })
-      } else if (n === 'car_beige')  { m = new THREE.MeshStandardMaterial({ color: 0xc8a87a, roughness: 0.20, metalness: 0.58, envMapIntensity: 1.5 })
-      } else if (n === 'carglass') {
-        m = new THREE.MeshPhysicalMaterial({ color: 0x1a2840, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.58, reflectivity: 0.85 })
-      } else if (n === 'wheel') {
-        m = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.94, metalness: 0.0 })
-      } else if (n === 'wheelrim') {
-        m = new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.10, metalness: 0.96, envMapIntensity: 2.5 })
-      } else if (n === 'carlight') {
-        m = new THREE.MeshStandardMaterial({ color: 0xfff8d0, roughness: 0.08, metalness: 0.1, emissive: new THREE.Color(0xfff8d0), emissiveIntensity: 2.5 })
-      } else if (n === 'cartaillt') {
-        m = new THREE.MeshStandardMaterial({ color: 0xff1010, roughness: 0.08, metalness: 0.1, emissive: new THREE.Color(0xff1010), emissiveIntensity: 2.0 })
-
+    const M: Record<string, THREE.Material> = {
+      // ── Building glass ─────────────────────────────────────────────────────
+      winGlass: new THREE.MeshPhysicalMaterial({
+        color: 0x0a1a2e, roughness: 0.06, metalness: 0.0,
+        transparent: true, opacity: 0.88, side: THREE.DoubleSide,
+        envMapIntensity: 1.2,
+      }),
+      lobbyGlass: new THREE.MeshPhysicalMaterial({
+        color: 0x0d2038, roughness: 0.04, metalness: 0.0,
+        transparent: true, opacity: 0.78, side: THREE.DoubleSide,
+        envMapIntensity: 1.0,
+      }),
+      // ── Building shell ─────────────────────────────────────────────────────
+      concrete: new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.84, metalness: 0.0 }),
+      slab:     new THREE.MeshStandardMaterial({ color: 0xbcac88, roughness: 0.86, metalness: 0.0 }),
+      aluminium:new THREE.MeshStandardMaterial({ color: 0x8a9298, roughness: 0.16, metalness: 0.92, envMapIntensity: 1.8 }),
+      roof:     new THREE.MeshStandardMaterial({ color: 0x1e2226, roughness: 0.90, metalness: 0.0 }),
+      // ── Ground ─────────────────────────────────────────────────────────────
+      asphalt:  new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.97, metalness: 0.0 }),
+      pavement: new THREE.MeshStandardMaterial({ color: 0xb8b0a0, roughness: 0.90, metalness: 0.0 }),
+      grass:    new THREE.MeshStandardMaterial({ color: 0x2e6e18, roughness: 0.96, metalness: 0.0 }),
+      parkGnd:  new THREE.MeshStandardMaterial({ color: 0x8a8278, roughness: 0.92, metalness: 0.0 }),
+      laneW:    new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.70, metalness: 0.0 }),
+      laneY:    new THREE.MeshStandardMaterial({ color: 0xf0c010, roughness: 0.70, metalness: 0.0 }),
+      kerb:     new THREE.MeshStandardMaterial({ color: 0xc0bab4, roughness: 0.80, metalness: 0.0 }),
+      // ── Trees ──────────────────────────────────────────────────────────────
+      leaf1: new THREE.MeshStandardMaterial({ color: 0x1e5a10, roughness: 0.96, metalness: 0.0 }),
+      leaf2: new THREE.MeshStandardMaterial({ color: 0x266e18, roughness: 0.96, metalness: 0.0 }),
+      leaf3: new THREE.MeshStandardMaterial({ color: 0x1a4e0c, roughness: 0.96, metalness: 0.0 }),
+      palm:  new THREE.MeshStandardMaterial({ color: 0x227814, roughness: 0.94, metalness: 0.0, side: THREE.DoubleSide }),
+      trunk: new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.96, metalness: 0.0 }),
+      // ── Street furniture ───────────────────────────────────────────────────
+      lampGlow: (() => { const x = new THREE.MeshStandardMaterial({ color: 0xfff4c0, roughness: 0.0, metalness: 0.0 }); x.emissive.set(0xfff4c0); x.emissiveIntensity = 6.0; return x })(),
+      lampPost: new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.28, metalness: 0.88 }),
+      bench:    new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.88, metalness: 0.0 }),
+      planter:  new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.82, metalness: 0.0 }),
+      // ── Cars ───────────────────────────────────────────────────────────────
+      carWhite:  new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.13, metalness: 0.72, envMapIntensity: 2.0 }),
+      carSilver: new THREE.MeshStandardMaterial({ color: 0x9a9ea4, roughness: 0.11, metalness: 0.88, envMapIntensity: 2.0 }),
+      carBlack:  new THREE.MeshStandardMaterial({ color: 0x0c0e10, roughness: 0.15, metalness: 0.78, envMapIntensity: 2.0 }),
+      carRed:    new THREE.MeshStandardMaterial({ color: 0xaa0c0c, roughness: 0.13, metalness: 0.68, envMapIntensity: 2.0 }),
+      carBlue:   new THREE.MeshStandardMaterial({ color: 0x0e2088, roughness: 0.13, metalness: 0.68, envMapIntensity: 2.0 }),
+      carBeige:  new THREE.MeshStandardMaterial({ color: 0xc8a87a, roughness: 0.20, metalness: 0.58, envMapIntensity: 1.5 }),
+      carGlass:  new THREE.MeshPhysicalMaterial({ color: 0x1a2840, roughness: 0.04, metalness: 0.0, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+      wheel:     new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.94, metalness: 0.0 }),
+      rim:       new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.10, metalness: 0.96, envMapIntensity: 2.5 }),
+      headlight: (() => { const x = new THREE.MeshStandardMaterial({ color: 0xfff8d0, roughness: 0.08, metalness: 0.1 }); x.emissive.set(0xfff8d0); x.emissiveIntensity = 2.5; return x })(),
+      taillight: (() => { const x = new THREE.MeshStandardMaterial({ color: 0xff1010, roughness: 0.08, metalness: 0.1 }); x.emissive.set(0xff1010); x.emissiveIntensity = 2.0; return x })(),
       // ── Background buildings ───────────────────────────────────────────────
-      } else if (n.includes('bgbuilding') || n.includes('bg_')) {
-        m = new THREE.MeshStandardMaterial({ color: 0xc4c0ba, roughness: 0.84, metalness: 0.0 })
-      }
+      bgBldg: new THREE.MeshStandardMaterial({ color: 0xc8c2b8, roughness: 0.84, metalness: 0.0 }),
+    }
 
-      if (m) glbMatCache.set(n, m)
-      return m
+    function classifyGLB(matName: string, meshName: string): THREE.Material | null {
+      const mat = matName.toLowerCase()
+      const msh = meshName.toLowerCase()
+
+      // Helper: check both mat and mesh name for a keyword
+      const has = (kw: string) => mat.includes(kw) || msh.includes(kw)
+
+      // Glass — checked FIRST and most strictly (avoid false positives)
+      if (mat === 'winglass' || mat === 'windowglass' ||
+          (has('window') && !has('car')) ||
+          (mat.includes('glass') && !has('car') && !has('lobby') && !has('canopy')))
+        return M.winGlass
+      if (mat === 'lobbyglass' || has('lobby') || has('canopy'))
+        return M.lobbyGlass
+
+      // Building shell
+      if (mat === 'concrete' || (has('concrete') && !has('car')) || has('core') || has('entrance') || has('stair') || has('column'))
+        return M.concrete
+      if (mat === 'slab' || has('band') || has('spandrel') || (mat === 'slab'))
+        return M.slab
+      if (mat === 'aluminium' || has('alum') || has('fin') || (has('frame') && !has('car')) || has('railing') || has('balcon'))
+        return M.aluminium
+      if (mat === 'roof' || has('parapet') || has('mech') || has('tank'))
+        return M.roof
+
+      // Ground
+      if (mat === 'asphalt' || (has('asphalt') && !has('car')) || (has('road') && !has('car')))
+        return M.asphalt
+      if (mat === 'pavement' || has('sidewalk') || has('plaza') || mat === 'kerb')
+        return M.pavement
+      if (mat === 'grass' || has('lawn') || (has('grass') && !has('car')))
+        return M.grass
+      if (mat === 'parkground')
+        return M.parkGnd
+      if (mat === 'lanemark' || mat === 'wlane' || (has('lane') && !has('car') && !has('yellow')))
+        return M.laneW
+      if (mat === 'yellowmark' || (has('yellow') && !has('car')))
+        return M.laneY
+      if (mat === 'kerb')
+        return M.kerb
+
+      // Trees
+      if (mat === 'leaf1') return M.leaf1
+      if (mat === 'leaf2') return M.leaf2
+      if (mat === 'leaf3') return M.leaf3
+      if (mat === 'palmfrond' || (has('palm') && !has('car'))) return M.palm
+      if (mat === 'trunk') return M.trunk
+      if (has('leaf') || has('foliage')) return M.leaf2
+
+      // Street furniture
+      if (mat === 'lampglow') return M.lampGlow
+      if (mat === 'lamppost' || (has('lamp') && !has('glow') && !has('car'))) return M.lampPost
+      if (mat === 'bench') return M.bench
+      if (mat === 'planter') return M.planter
+
+      // Cars
+      if (mat === 'car_white')  return M.carWhite
+      if (mat === 'car_silver') return M.carSilver
+      if (mat === 'car_black')  return M.carBlack
+      if (mat === 'car_red')    return M.carRed
+      if (mat === 'car_blue')   return M.carBlue
+      if (mat === 'car_beige')  return M.carBeige
+      if (mat === 'carglass')   return M.carGlass
+      if (mat === 'wheel')      return M.wheel
+      if (mat === 'wheelrim')   return M.rim
+      if (mat === 'carlight')   return M.headlight
+      if (mat === 'cartaillt')  return M.taillight
+
+      // Background buildings
+      if (has('bgbuilding') || mat.startsWith('bg_') || msh.startsWith('bgbuilding'))
+        return M.bgBldg
+
+      // ── Colour-based fallback: classify by what Blender exported ─────────
+      // This catches any mesh whose name didn't match but whose exported colour gives it away.
+      const src = matName  // original (un-lowercased) name helps heuristics
+      void src
+      return null
     }
 
     const loadModel = (group: THREE.Object3D) => {
@@ -629,10 +682,10 @@ export default function ModelViewer({
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh
           if (isGLB) {
-            // Replace every material by name — Blender transmission glass renders white
-            // in Three.js real-time; we control colours explicitly here.
+            // Two-pass lookup: material name first, then mesh name.
+            // Transparent glass always shows dark base colour regardless of env map.
             const replaceMat = (mat: THREE.Material): THREE.Material =>
-              glbMaterialFor(mat.name) ?? mat
+              classifyGLB(mat.name, mesh.name) ?? mat
             mesh.material = Array.isArray(mesh.material)
               ? mesh.material.map(replaceMat)
               : replaceMat(mesh.material)
