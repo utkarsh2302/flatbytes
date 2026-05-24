@@ -15,10 +15,10 @@ interface Props {
 }
 
 const STARTERS = [
-  "What's the starting price?",
+  "Which flats are available?",
   "When is possession?",
   "Tell me about amenities",
-  "Are 3 BHK flats available?",
+  "How do I book a visit?",
 ];
 
 export default function ChatWidget({ projectId, projectName }: Props) {
@@ -67,9 +67,10 @@ export default function ChatWidget({ projectId, projectName }: Props) {
         });
       }
 
-      // Show lead form if the bot suggested a callback
-      if (assistantText.toLowerCase().includes("callback") || assistantText.toLowerCase().includes("sales team")) {
-        setTimeout(() => setShowLeadForm(true), 600);
+      // Show lead form if bot suggested callback OR if user asked about pricing
+      const userAskedPrice = text.toLowerCase().match(/price|cost|rate|budget|how much|lakh|crore|₹/);
+      if (userAskedPrice || assistantText.toLowerCase().includes("callback") || assistantText.toLowerCase().includes("sales team")) {
+        setTimeout(() => setShowLeadForm(true), 800);
       }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I'm having trouble connecting. Please try again." }]);
@@ -115,6 +116,7 @@ export default function ChatWidget({ projectId, projectName }: Props) {
             background: "#fff",
             boxShadow: "rgba(0,0,0,0.24) 0px 20px 60px",
             border: "1px solid rgba(0,0,0,0.08)",
+            animation: "slideUpSheet 0.28s cubic-bezier(0.34,1.2,0.64,1)",
           }}
         >
           {/* Header */}

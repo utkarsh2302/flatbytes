@@ -805,8 +805,20 @@ export default function ProjectExplorer({ project }: Props) {
                               <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#3a3a3c", marginTop:6 }}>
                                 {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()}
                               </div>
-                              <div style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.42)", marginTop:2 }}>
-                                {flat.carpet_area_sqft.toLocaleString()} sq.ft
+                              <div className="flex items-center gap-2 flex-wrap" style={{ marginTop:2 }}>
+                                <span style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.42)" }}>
+                                  {flat.carpet_area_sqft.toLocaleString()} sq.ft
+                                </span>
+                                {flat.bathrooms != null && flat.bathrooms > 0 && (
+                                  <span style={{ fontSize:"0.72rem", color:"rgba(0,0,0,0.35)", display:"flex", alignItems:"center", gap:2 }}>
+                                    · {flat.bathrooms}ba
+                                  </span>
+                                )}
+                                {flat.balcony_count != null && flat.balcony_count > 0 && (
+                                  <span style={{ fontSize:"0.72rem", color:"rgba(0,0,0,0.35)", display:"flex", alignItems:"center", gap:2 }}>
+                                    · {flat.balcony_count}🪟
+                                  </span>
+                                )}
                               </div>
 
                               <div style={{ height:1, background:"rgba(0,0,0,0.06)", margin:"11px 0 10px" }}/>
@@ -821,7 +833,9 @@ export default function ProjectExplorer({ project }: Props) {
                                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(0,113,227,0.08)"}>
                                   <Box className="w-3 h-3"/> 3D Tour
                                 </button>
-                                <span style={{ fontSize:"0.6875rem", color:"rgba(0,0,0,0.32)", fontStyle:"italic" }}>On Request</span>
+                                <span style={{ fontSize:"0.6875rem", color:"rgba(0,0,0,0.32)", fontStyle:"italic" }}>
+                                  {flat.status === "available" ? "On Request" : ""}
+                                </span>
                               </div>
                             </button>
                           );
