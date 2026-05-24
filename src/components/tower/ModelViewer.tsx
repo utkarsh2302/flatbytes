@@ -403,14 +403,14 @@ export default function ModelViewer({
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = isGLB ? 1.55 : (buildingType === 'commercial' ? 0.75 : 0.88)
+    renderer.toneMappingExposure = isGLB ? 0.95 : (buildingType === 'commercial' ? 0.75 : 0.88)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     mount.appendChild(renderer.domElement)
 
     // PMREMGenerator for environment reflections on MeshPhysicalMaterial
     const pmremGenerator = new THREE.PMREMGenerator(renderer)
     pmremGenerator.compileEquirectangularShader()
-    const envRenderTarget = pmremGenerator.fromScene(new RoomEnvironment(0.04))
+    const envRenderTarget = pmremGenerator.fromScene(new RoomEnvironment())
     scene.environment = envRenderTarget.texture
     // Do NOT set scene.background from env — we use the sky dome instead
     pmremGenerator.dispose()
@@ -418,9 +418,10 @@ export default function ModelViewer({
     // Lighting — architectural quality for GLB, standard for procedural
     let sun: THREE.DirectionalLight
     if (isGLB) {
-      scene.add(new THREE.AmbientLight(0xfff8f2, 1.4))
-      // Key sun
-      sun = new THREE.DirectionalLight(0xfff4d0, 5.5)
+      // Total illumination kept low (~2.5) so ACES tone mapping preserves material colours.
+      // High ambient (>1.0) + strong sun (>3.0) saturates everything to white.
+      scene.add(new THREE.AmbientLight(0xfff8f2, 0.45))
+      sun = new THREE.DirectionalLight(0xfff4d0, 2.2)
       sun.position.set(60, 120, -70)
       sun.castShadow = true
       sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096
@@ -429,17 +430,13 @@ export default function ModelViewer({
       sun.shadow.camera.top = 150; sun.shadow.camera.bottom = -150
       sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.02
       scene.add(sun)
-      // Sky fill — cool blue from opposite side
-      const fill = new THREE.DirectionalLight(0x8ec8f8, 2.2)
+      const fill = new THREE.DirectionalLight(0x8ec8f8, 0.7)
       fill.position.set(-80, 60, 80); scene.add(fill)
-      // Front fill — softens shadow side
-      const front = new THREE.DirectionalLight(0xd0e8ff, 1.2)
+      const front = new THREE.DirectionalLight(0xd0e8ff, 0.4)
       front.position.set(0, 40, 100); scene.add(front)
-      // Warm ground bounce
-      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.6)
+      const bounce = new THREE.DirectionalLight(0xffd8a0, 0.2)
       bounce.position.set(0, -50, 0); scene.add(bounce)
-      // Hemisphere for sky/ground color bleed
-      scene.add(new THREE.HemisphereLight(0x7ec8f0, 0xb09060, 1.2))
+      scene.add(new THREE.HemisphereLight(0x7ec8f0, 0xb09060, 0.45))
     } else {
       scene.add(new THREE.AmbientLight(0xfff4e8, buildingType === 'commercial' ? 1.0 : 1.4))
       sun = new THREE.DirectionalLight(0xfffbe0, buildingType === 'commercial' ? 2.8 : 3.5)
@@ -558,8 +555,8 @@ export default function ModelViewer({
         envMapIntensity: 1.0,
       }),
       // ── Building shell ─────────────────────────────────────────────────────
-      concrete: new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.84, metalness: 0.0 }),
-      slab:     new THREE.MeshStandardMaterial({ color: 0xbcac88, roughness: 0.86, metalness: 0.0 }),
+      concrete: new THREE.MeshStandardMaterial({ color: 0xc8a87a, roughness: 0.84, metalness: 0.0 }),
+      slab:     new THREE.MeshStandardMaterial({ color: 0x907050, roughness: 0.86, metalness: 0.0 }),
       aluminium:new THREE.MeshStandardMaterial({ color: 0x8a9298, roughness: 0.16, metalness: 0.92, envMapIntensity: 1.8 }),
       roof:     new THREE.MeshStandardMaterial({ color: 0x1e2226, roughness: 0.90, metalness: 0.0 }),
       // ── Ground ─────────────────────────────────────────────────────────────
@@ -597,7 +594,7 @@ export default function ModelViewer({
       bgBldg: new THREE.MeshStandardMaterial({ color: 0xc8c2b8, roughness: 0.84, metalness: 0.0 }),
     }
 
-    function classifyGLB(matName: string, meshName: string): THREE.Material | null {
+    function classifyGLB(matName: string, meshName: string, existingMat?: THREE.Material): THREE.Material | null {
       const mat = matName.toLowerCase()
       const msh = meshName.toLowerCase()
 
@@ -669,10 +666,27 @@ export default function ModelViewer({
       if (has('bgbuilding') || mat.startsWith('bg_') || msh.startsWith('bgbuilding'))
         return M.bgBldg
 
-      // ── Colour-based fallback: classify by what Blender exported ─────────
-      // This catches any mesh whose name didn't match but whose exported colour gives it away.
-      const src = matName  // original (un-lowercased) name helps heuristics
-      void src
+      // ── Colour-based fallback — classify by the exported baseColorFactor ──
+      // Catches any mesh that slipped through name matching.
+      if (existingMat instanceof THREE.MeshStandardMaterial) {
+        const c = existingMat.color
+        // Very dark blue → window glass
+        if (c.r < 0.10 && c.b > 0.08 && c.b > c.r * 2) return M.winGlass
+        // Dark blue (slightly brighter) → lobby glass
+        if (c.r < 0.12 && c.b > 0.14 && c.b > c.r) return M.lobbyGlass
+        // Very dark near-black → roof/mech
+        if (c.r < 0.20 && c.g < 0.20 && c.b < 0.22) return M.roof
+        // Very light warm → concrete facade
+        if (c.r > 0.80 && c.g > 0.75 && c.r > c.b) return M.concrete
+        // Light warm mid → slab/band
+        if (c.r > 0.65 && c.g > 0.60 && c.r > c.b + 0.04) return M.slab
+        // Cool medium grey → aluminium
+        if (c.r > 0.55 && Math.abs(c.r - c.b) < 0.06) return M.aluminium
+        // Green → vegetation
+        if (c.g > c.r + 0.10 && c.g > 0.18) return M.leaf2
+        // Very dark grey → asphalt
+        if (c.r < 0.18 && c.g < 0.18 && c.b < 0.18) return M.asphalt
+      }
       return null
     }
 
@@ -685,7 +699,7 @@ export default function ModelViewer({
             // Two-pass lookup: material name first, then mesh name.
             // Transparent glass always shows dark base colour regardless of env map.
             const replaceMat = (mat: THREE.Material): THREE.Material =>
-              classifyGLB(mat.name, mesh.name) ?? mat
+              classifyGLB(mat.name, mesh.name, mat) ?? mat
             mesh.material = Array.isArray(mesh.material)
               ? mesh.material.map(replaceMat)
               : replaceMat(mesh.material)
