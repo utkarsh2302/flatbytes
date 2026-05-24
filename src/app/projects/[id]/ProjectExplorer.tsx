@@ -133,6 +133,15 @@ export default function ProjectExplorer({ project }: Props) {
   const filteredFlats = useMemo(() => applyFilters(allFlats, filters), [allFlats, filters]);
   const filterCount  = filters.flatType.length + filters.status.length + filters.facing.length;
 
+  // Available BHK types across all flats (for quick-select chips)
+  const availableBhkTypes = useMemo(() => {
+    const types = Array.from(new Set(
+      allFlats.filter(f => f.status === "available").map(f => f.flat_type)
+    ));
+    const order = ["studio","1bhk","2bhk","3bhk","4bhk","penthouse","office","office_floor"];
+    return types.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  }, [allFlats]);
+
   const currentFloor = selectedFloor ?? (activeTower?.total_floors ?? 1);
   const floorFlats   = useMemo(() => {
     let flats = applyFilters(activeTower?.flats ?? [], filters).filter((f) => f.floor === currentFloor);
@@ -475,7 +484,12 @@ export default function ProjectExplorer({ project }: Props) {
                 <span className="shrink-0 text-xs font-semibold mr-1" style={{ color:"rgba(0,0,0,0.32)", letterSpacing:"0.04em" }}>FLOOR</span>
                 {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
                   const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
-                  const hasAvail = fp.some(fl => fl.status === "available");
+                  // Filter by active type if set, for accurate dot color
+                  const typed = filters.flatType.length > 0
+                    ? fp.filter(fl => filters.flatType.includes(fl.flat_type))
+                    : fp;
+                  const hasAvail = typed.some(fl => fl.status === "available");
+                  const hasAny = typed.length > 0;
                   const active = f === currentFloor;
                   return (
                     <button key={f}
@@ -487,6 +501,7 @@ export default function ProjectExplorer({ project }: Props) {
                         color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
                         fontWeight: active ? 700 : 500, fontSize: "0.875rem",
                         border: active ? "none" : fp.length ? "1px solid rgba(0,0,0,0.09)" : "none",
+                        opacity: filters.flatType.length > 0 && !hasAny ? 0.3 : 1,
                       }}>
                       {f}
                       {!active && fp.length > 0 && (
@@ -510,10 +525,15 @@ export default function ProjectExplorer({ project }: Props) {
                   <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth:"none" }}>
                     {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
                       const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
-                      const avC = fp.filter(fl => fl.status === "available").length;
-                      const soC = fp.filter(fl => fl.status === "sold").length;
-                      const reC = fp.filter(fl => fl.status === "reserved").length;
+                      // Respect BHK type filter for dot counts
+                      const typed = filters.flatType.length > 0
+                        ? fp.filter(fl => filters.flatType.includes(fl.flat_type))
+                        : fp;
+                      const avC = typed.filter(fl => fl.status === "available").length;
+                      const soC = typed.filter(fl => fl.status === "sold").length;
+                      const reC = typed.filter(fl => fl.status === "reserved").length;
                       const active = f === currentFloor;
+                      const dimmed = filters.flatType.length > 0 && typed.length === 0 && fp.length > 0;
                       const isHighFloor = f >= Math.ceil(totalFloors * 0.75);
                       const isGroundLevel = f <= 2;
                       const qualityTag = isHighFloor ? { label:"✦", title:"Premium Floor", color:"#c25000" }
@@ -529,11 +549,12 @@ export default function ProjectExplorer({ project }: Props) {
                             color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
                             background: active ? "#0071e3" : "transparent",
                             cursor: fp.length ? "pointer" : "default",
+                            opacity: dimmed ? 0.35 : 1,
                           }}
                           title={qualityTag?.title}>
                           <span>{f}</span>
                           <div className="flex items-center gap-0.5">
-                            {qualityTag && !active && (
+                            {qualityTag && !active && !dimmed && (
                               <span style={{ fontSize:"0.5rem", fontWeight:700, color: qualityTag.color, lineHeight:1 }}>
                                 {qualityTag.label}
                               </span>
@@ -587,17 +608,30 @@ export default function ProjectExplorer({ project }: Props) {
                       )}
                     </div>
 
-                    {/* Filter + sort strip */}
+                    {/* BHK Quick-Select chips + sort strip */}
                     <div className="pill-scroll items-center gap-2 px-5 pb-2.5">
-                      {/* Active BHK type chip (when type filter is set from URL) */}
-                      {filters.flatType.length > 0 && (
-                        <button
-                          onClick={() => setFilters(prev => ({ ...prev, flatType: [] }))}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0"
-                          style={{ background:"rgba(0,113,227,0.12)", color:"#0055b3", border:"1.5px solid rgba(0,113,227,0.3)" }}>
-                          {filters.flatType.map(t => FLAT_TYPE_LABELS[t] ?? t).join(", ")}
-                          <span style={{ opacity:0.6, fontSize:"0.65rem" }}>✕</span>
-                        </button>
+                      {/* BHK type chips — one per available type in this project */}
+                      {availableBhkTypes.map(t => {
+                        const active = filters.flatType.includes(t);
+                        return (
+                          <button key={t}
+                            onClick={() => setFilters(prev => ({
+                              ...prev,
+                              flatType: active
+                                ? prev.flatType.filter(x => x !== t)
+                                : [...prev.flatType, t],
+                            }))}
+                            className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                            style={active
+                              ? { background:"#0071e3", color:"#fff", border:"1.5px solid #0071e3" }
+                              : { background:"#f5f5f7", color:"rgba(0,0,0,0.6)", border:"1.5px solid rgba(0,0,0,0.1)" }}>
+                            {FLAT_TYPE_LABELS[t] ?? t}
+                          </button>
+                        );
+                      })}
+                      {/* Divider */}
+                      {availableBhkTypes.length > 0 && (
+                        <div style={{ width:1, height:20, background:"rgba(0,0,0,0.1)", flexShrink:0 }}/>
                       )}
                       {/* Available only toggle */}
                       <button
@@ -661,19 +695,32 @@ export default function ProjectExplorer({ project }: Props) {
                         <div style={{ width:56, height:56, borderRadius:16, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center" }}>
                           <Building2 className="w-6 h-6" style={{ color:"rgba(0,0,0,0.2)" }}/>
                         </div>
-                        <p style={{ fontSize:"0.9375rem", fontWeight:600, color:"rgba(0,0,0,0.35)" }}>
-                          {showAvailOnly ? "No available flats on this floor" : `No units on Floor ${currentFloor}`}
+                        <p style={{ fontSize:"0.9375rem", fontWeight:600, color:"rgba(0,0,0,0.35)", textAlign:"center" }}>
+                          {filters.flatType.length > 0
+                            ? `No ${filters.flatType.map(t => FLAT_TYPE_LABELS[t] ?? t).join("/")} on Floor ${currentFloor}`
+                            : showAvailOnly ? "No available flats on this floor" : `No units on Floor ${currentFloor}`}
                         </p>
-                        <p style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.25)" }}>
-                          {showAvailOnly ? "Try turning off 'Available Only' or pick another floor" : "Try a different floor"}
+                        <p style={{ fontSize:"0.8125rem", color:"rgba(0,0,0,0.25)", textAlign:"center" }}>
+                          {filters.flatType.length > 0 ? "Pick another floor or clear the type filter"
+                            : showAvailOnly ? "Try turning off 'Available Only' or pick another floor"
+                            : "Try a different floor"}
                         </p>
-                        {showAvailOnly && (
-                          <button onClick={() => setShowAvailOnly(false)}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold"
-                            style={{ background:"#f5f5f7", color:"#1d1d1f", border:"none", cursor:"pointer" }}>
-                            Show all statuses
-                          </button>
-                        )}
+                        <div className="flex gap-2 flex-wrap justify-center">
+                          {filters.flatType.length > 0 && (
+                            <button onClick={() => setFilters(prev => ({ ...prev, flatType: [] }))}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold"
+                              style={{ background:"rgba(0,113,227,0.1)", color:"#0055b3", border:"none", cursor:"pointer" }}>
+                              Show all types
+                            </button>
+                          )}
+                          {showAvailOnly && (
+                            <button onClick={() => setShowAvailOnly(false)}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold"
+                              style={{ background:"#f5f5f7", color:"#1d1d1f", border:"none", cursor:"pointer" }}>
+                              Show all statuses
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="grid gap-3 sm:gap-4"
