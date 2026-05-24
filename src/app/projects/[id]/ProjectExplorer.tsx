@@ -341,52 +341,78 @@ export default function ProjectExplorer({ project }: Props) {
           )}
 
           {/* ═══ VISUAL RENDER VIEW ════════════════════════════════════ */}
-          {view === "visual" && (
-            <div className="w-full h-full relative overflow-hidden" style={{ background: "#0a0f1a" }}>
-              <Image
-                src="/images/building_render.jpg"
-                alt={`${project.name} architectural visualization`}
-                fill
-                className="object-contain"
-                priority
-                sizes="100vw"
-              />
-              {/* Gradient overlay bottom */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: "linear-gradient(to top, rgba(10,15,26,0.92) 0%, rgba(10,15,26,0.3) 40%, transparent 70%)" }}/>
-              {/* Top badge */}
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
-                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#1cc77f" }}/>
-                Photorealistic Render · Cycles
-              </div>
-              {/* Bottom CTA */}
-              <div className="absolute bottom-0 left-0 right-0 z-10 p-6 sm:p-8">
-                <div className="max-w-2xl">
-                  <h2 style={{ fontSize: "clamp(1.2rem,3vw,2rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                    {project.name}
-                  </h2>
-                  <p className="mt-1.5 text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
-                    {project.location}
-                  </p>
-                  <div className="flex items-center gap-3 mt-4">
-                    <button onClick={() => setView("3d")}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
-                      style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
-                      <Box className="w-4 h-4"/>
-                      Explore in 3D
-                    </button>
-                    <button onClick={() => setView("floor")}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
-                      style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
-                      <Layers className="w-4 h-4"/>
-                      View Floor Plans
-                    </button>
+          {view === "visual" && (() => {
+            const heroImage = project.cover_image_url ?? "/images/building_render.jpg";
+            // Build gallery from milestones that have photo_urls
+            const milestonePhotos = project.construction_milestones
+              .flatMap(m => m.photo_urls ?? [])
+              .slice(0, 5);
+            const photoGallery: string[] = [
+              ...(project.cover_image_url ? [project.cover_image_url] : []),
+              ...milestonePhotos,
+            ].filter(Boolean).slice(0, 6);
+            if (photoGallery.length === 0) photoGallery.push("/images/building_render.jpg");
+            return (
+              <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: "#0a0f1a" }}>
+                {/* Main hero image */}
+                <div className="relative flex-1 overflow-hidden">
+                  <Image
+                    src={heroImage}
+                    alt={`${project.name} architectural visualization`}
+                    fill
+                    className="object-cover"
+                    priority
+                    sizes="100vw"
+                  />
+                  {/* Gradient overlay bottom */}
+                  <div className="absolute inset-0 pointer-events-none"
+                    style={{ background: "linear-gradient(to top, rgba(10,15,26,0.92) 0%, rgba(10,15,26,0.3) 40%, transparent 70%)" }}/>
+                  {/* Status badge */}
+                  <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+                    style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#1cc77f" }}/>
+                    {stats.available} Available · Live
+                  </div>
+                  {/* Bottom CTA */}
+                  <div className="absolute bottom-0 left-0 right-0 z-10 p-5 sm:p-8">
+                    <div className="max-w-2xl">
+                      <h2 style={{ fontSize: "clamp(1.2rem,3vw,2rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                        {project.name}
+                      </h2>
+                      <p className="mt-1" style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.55)" }}>
+                        {project.location}
+                      </p>
+                      <div className="flex items-center gap-2.5 mt-4 flex-wrap">
+                        <button onClick={() => setView("3d")}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                          style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
+                          <Box className="w-4 h-4"/>
+                          Explore in 3D
+                        </button>
+                        <button onClick={() => setView("floor")}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
+                          <Layers className="w-4 h-4"/>
+                          Browse Flats
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                {/* Thumbnail strip — only shows if multiple photos */}
+                {photoGallery.length > 1 && (
+                  <div className="shrink-0 flex gap-2 px-4 py-3 overflow-x-auto" style={{ background: "#0a0f1a", scrollbarWidth: "none" }}>
+                    {photoGallery.map((url, i) => (
+                      <div key={i} className="relative shrink-0 rounded-xl overflow-hidden" style={{ width: 80, height: 56 }}>
+                        <Image src={url} alt={`${project.name} photo ${i + 1}`} fill className="object-cover"
+                          sizes="80px" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ═══ 3D VIEW ═══════════════════════════════════════════════ */}
           {view === "3d" && (
