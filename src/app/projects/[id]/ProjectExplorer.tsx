@@ -948,8 +948,12 @@ export default function ProjectExplorer({ project }: Props) {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
                     {[
                       { label:"Configuration", value: (() => {
-                          const ts = Array.from(new Set(allFlats.map(f=>f.flat_type))).sort();
-                          return ts.length === 0 ? "—" : ts.length === 1 ? ts[0].toUpperCase() : `${ts[0].toUpperCase()} – ${ts[ts.length-1].toUpperCase()}`;
+                          const order = ["studio","1bhk","2bhk","3bhk","4bhk","penthouse","office","office_floor"];
+                          const ts = Array.from(new Set(allFlats.map(f=>f.flat_type)))
+                            .sort((a,b) => order.indexOf(a) - order.indexOf(b));
+                          if (ts.length === 0) return "—";
+                          const labels = ts.map(t => FLAT_TYPE_LABELS[t] ?? t.toUpperCase());
+                          return ts.length === 1 ? labels[0] : `${labels[0]} – ${labels[labels.length-1]}`;
                         })() },
                       { label:"Price",        value:"On Request" },
                       { label:"Carpet Area",  value: (() => {

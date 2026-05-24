@@ -31,11 +31,8 @@ export async function POST(req: Request) {
     .map(([t, n]) => `${n} × ${t.toUpperCase()}`)
     .join(", ");
 
-  const priceRange = project.price_starting && project.price_max
-    ? `₹${(project.price_starting / 10000000).toFixed(1)} Cr – ₹${(project.price_max / 10000000).toFixed(1)} Cr`
-    : project.price_starting
-    ? `Starting ₹${(project.price_starting / 100000).toFixed(0)}L`
-    : "Contact for pricing";
+  // Pricing is always On Request — never reveal actual prices to buyers
+  const priceRange = "On Request — interested buyers are connected with our sales team for a personalised quote";
 
   const amenityList = project.amenities.map((a) => a.name).join(", ") || "Premium amenities";
 
@@ -56,8 +53,10 @@ ${project.description ? `- About: ${project.description}` : ""}
 Your role:
 - Answer questions about the project naturally and helpfully
 - Keep answers concise (2–3 sentences max)
-- When the buyer shows buying intent (asking about price, booking, visits, EMI, availability), suggest: "I can arrange a callback from our sales team — would that help?"
-- Do not make up prices or specs not listed above
+- NEVER reveal specific prices, quotes, or cost figures — pricing is strictly On Request
+- When asked about price/cost/EMI/budget, say it is "On Request" and suggest: "I can arrange a callback from our sales team for a personalised quote — would that help?"
+- When the buyer shows buying intent (booking, visits, availability), suggest a callback
+- Do not make up specs not listed above
 - Be warm and professional, like a knowledgeable sales executive`;
 
   const stream = client.messages.stream({
