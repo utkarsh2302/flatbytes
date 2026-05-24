@@ -1,19 +1,195 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import type { Flat } from "@/lib/types";
-import { X, Box, Camera } from "lucide-react";
+import { X, Box, Images, ChevronLeft, ChevronRight } from "lucide-react";
 
 const FlatInterior3D = dynamic(() => import("./FlatInterior3D"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center" style={{ background: "#1a2430" }}>
-      <div className="w-12 h-12 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(28,199,127,0.2)", borderTopColor: "#1cc77f" }} />
-      <p className="text-sm mt-4" style={{ color: "rgba(255,255,255,0.7)" }}>Building 3D interior…</p>
+    <div className="w-full h-full flex flex-col items-center justify-center" style={{ background: "#0d1117" }}>
+      <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(28,199,127,0.15)", borderTopColor: "#1cc77f" }} />
+      <p className="text-sm mt-4" style={{ color: "rgba(255,255,255,0.5)" }}>Building 3D interior…</p>
     </div>
   ),
 });
+
+// Curated interior photo sets per flat type
+// Each entry: { room, url (Unsplash direct), credit }
+type RoomPhoto = { room: string; url: string }
+
+const PHOTO_SETS: Record<string, RoomPhoto[]> = {
+  "2bhk": [
+    { room: "Living Room",     url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=85&fit=crop" },
+    { room: "Master Bedroom",  url: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=85&fit=crop" },
+    { room: "Kitchen",         url: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=85&fit=crop" },
+    { room: "Bathroom",        url: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=85&fit=crop" },
+    { room: "Balcony View",    url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&fit=crop" },
+  ],
+  "3bhk": [
+    { room: "Living Room",     url: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=1600&q=85&fit=crop" },
+    { room: "Master Bedroom",  url: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=1600&q=85&fit=crop" },
+    { room: "Bedroom 2",       url: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=1600&q=85&fit=crop" },
+    { room: "Kitchen",         url: "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1600&q=85&fit=crop" },
+    { room: "Master Bath",     url: "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=1600&q=85&fit=crop" },
+    { room: "Balcony View",    url: "https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=1600&q=85&fit=crop" },
+  ],
+  "4bhk": [
+    { room: "Grand Living",    url: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=85&fit=crop" },
+    { room: "Dining Area",     url: "https://images.unsplash.com/photo-1617806118233-18e1de247200?w=1600&q=85&fit=crop" },
+    { room: "Master Suite",    url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=85&fit=crop" },
+    { room: "Kitchen",         url: "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=1600&q=85&fit=crop" },
+    { room: "Master Bath",     url: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=85&fit=crop" },
+    { room: "Study / Library", url: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1600&q=85&fit=crop" },
+    { room: "Balcony View",    url: "https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=1600&q=85&fit=crop" },
+  ],
+  "office": [
+    { room: "Reception",       url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=85&fit=crop" },
+    { room: "Open Floor",      url: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1600&q=85&fit=crop" },
+    { room: "Conference Room", url: "https://images.unsplash.com/photo-1529579538991-6e5ab50a1cb4?w=1600&q=85&fit=crop" },
+    { room: "City View",       url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&fit=crop" },
+  ],
+  "default": [
+    { room: "Living Room",     url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=85&fit=crop" },
+    { room: "Bedroom",         url: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=85&fit=crop" },
+    { room: "Kitchen",         url: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=85&fit=crop" },
+    { room: "Bathroom",        url: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=85&fit=crop" },
+    { room: "Balcony View",    url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&fit=crop" },
+  ],
+};
+
+function photosForFlat(flat: Flat): RoomPhoto[] {
+  const t = flat.flat_type.toLowerCase();
+  if (t.includes("4")) return PHOTO_SETS["4bhk"];
+  if (t.includes("3")) return PHOTO_SETS["3bhk"];
+  if (t.includes("2")) return PHOTO_SETS["2bhk"];
+  if (t.includes("office") || t.includes("commercial")) return PHOTO_SETS["office"];
+  return PHOTO_SETS["default"];
+}
+
+function PhotoGallery({ photos }: { photos: RoomPhoto[] }) {
+  const [idx, setIdx] = useState(0);
+  const [animDir, setAnimDir] = useState<"left" | "right" | null>(null);
+  const [touchStartX, setTouchStartX] = useState(0);
+
+  const go = useCallback((dir: "left" | "right") => {
+    setAnimDir(dir);
+    setIdx(prev => dir === "right"
+      ? (prev + 1) % photos.length
+      : (prev - 1 + photos.length) % photos.length
+    );
+    setTimeout(() => setAnimDir(null), 300);
+  }, [photos.length]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") go("right");
+      if (e.key === "ArrowLeft")  go("left");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [go]);
+
+  const current = photos[idx];
+
+  return (
+    <div className="w-full h-full flex flex-col" style={{ background: "#0a0d12" }}>
+      {/* Main image */}
+      <div
+        className="relative flex-1 overflow-hidden select-none"
+        onTouchStart={e => setTouchStartX(e.touches[0].clientX)}
+        onTouchEnd={e => {
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          if (Math.abs(dx) > 50) go(dx < 0 ? "right" : "left");
+        }}
+      >
+        <Image
+          key={idx}
+          src={current.url}
+          alt={current.room}
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+          style={{
+            transition: animDir ? "opacity 0.28s ease" : "none",
+            opacity: animDir ? 0 : 1,
+          }}
+        />
+
+        {/* Dark gradient overlay — top and bottom */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 65%, rgba(0,0,0,0.70) 100%)"
+        }} />
+
+        {/* Room label */}
+        <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
+          <div
+            className="px-5 py-2 rounded-full text-sm font-semibold tracking-wide"
+            style={{ background: "rgba(0,0,0,0.50)", backdropFilter: "blur(12px)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", letterSpacing: "0.04em" }}
+          >
+            {current.room}
+          </div>
+        </div>
+
+        {/* Counter */}
+        <div className="absolute top-4 right-4 text-xs font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>
+          {idx + 1} / {photos.length}
+        </div>
+
+        {/* Prev / Next arrows */}
+        {photos.length > 1 && (
+          <>
+            <button
+              onClick={() => go("left")}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => go("right")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Thumbnail strip */}
+      <div
+        className="shrink-0 flex gap-2 overflow-x-auto px-4 py-3"
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)", scrollbarWidth: "none" }}
+      >
+        {photos.map((p, i) => (
+          <button
+            key={i}
+            onClick={() => setIdx(i)}
+            className="relative shrink-0 rounded-lg overflow-hidden transition-all"
+            style={{
+              width: 72, height: 48,
+              outline: i === idx ? "2px solid #fff" : "2px solid transparent",
+              outlineOffset: 1,
+              opacity: i === idx ? 1 : 0.55,
+            }}
+          >
+            <Image src={p.url} alt={p.room} fill className="object-cover" sizes="72px" />
+            <div
+              className="absolute inset-x-0 bottom-0 px-1 py-0.5 text-center"
+              style={{ background: "rgba(0,0,0,0.6)", fontSize: 8, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {p.room}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   flat: Flat;
@@ -21,138 +197,77 @@ interface Props {
 }
 
 export default function VirtualTourModal({ flat, onClose }: Props) {
-  const has360 = Boolean(flat.view_360_url);
-  const [tab, setTab] = useState<"3d" | "360">("3d");
-  const [iframeError, setIframeError] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const iframeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartY = useRef(0);
+  const [tab, setTab] = useState<"3d" | "photos">("photos");
   const isOffice = /office/.test(flat.flat_type);
+  const photos = photosForFlat(flat);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientY - touchStartY.current;
-    if (delta > 80) onClose();
-  };
+  const [touchStartY, setTouchStartY] = useState(0);
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "#0d1117" }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      style={{ background: "#0a0d12" }}
+      onTouchStart={e => setTouchStartY(e.touches[0].clientY)}
+      onTouchEnd={e => { if (tab === "3d" && e.changedTouches[0].clientY - touchStartY > 80) onClose(); }}
     >
       {/* Header */}
       <div
-        className="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-3 pt-safe"
-        style={{ background: "rgba(13,17,23,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        className="shrink-0 flex items-center justify-between gap-3 px-4 py-3"
+        style={{ background: "rgba(10,13,18,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(0,113,227,0.2)" }}>
-            <Box className="w-4 h-4" style={{ color: "#2997ff" }} />
+        <div className="min-w-0">
+          <div style={{ fontWeight: 600, fontSize: 14, color: "#fff" }} className="truncate">
+            {isOffice ? "Unit" : "Flat"} {flat.flat_number}
           </div>
-          <div className="min-w-0">
-            <div style={{ fontWeight: 600, fontSize: 14, color: "#fff" }} className="truncate">
-              3D Walkthrough — {isOffice ? "Unit" : "Flat"} {flat.flat_number}
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
-              {flat.flat_type.toUpperCase().replace("_", " ")} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft
-            </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+            {flat.flat_type.toUpperCase().replace("_", " ")} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {has360 && (
-            <div className="flex items-center gap-0.5 rounded-xl p-0.5" style={{ background: "rgba(255,255,255,0.08)" }}>
-              {([
-                { id: "3d", label: "3D Model", icon: <Box className="w-3.5 h-3.5" /> },
-                { id: "360", label: "360° Photo", icon: <Camera className="w-3.5 h-3.5" /> },
-              ] as const).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => { setTab(t.id); setIframeError(false); setIframeLoaded(false); if (iframeTimerRef.current) clearTimeout(iframeTimerRef.current); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={tab === t.id ? { background: "#0071e3", color: "#fff" } : { color: "rgba(255,255,255,0.6)", background: "none", border: "none", cursor: "pointer" }}
-                >
-                  {t.icon}
-                  <span className="hidden sm:inline">{t.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Tab switcher */}
+          <div className="flex items-center gap-0.5 rounded-xl p-0.5" style={{ background: "rgba(255,255,255,0.07)" }}>
+            {([
+              { id: "photos" as const, label: "Photos",      icon: <Images className="w-3.5 h-3.5" /> },
+              { id: "3d"     as const, label: "3D Interior", icon: <Box    className="w-3.5 h-3.5" /> },
+            ]).map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={tab === t.id
+                  ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
+                  : { color: "rgba(255,255,255,0.55)", background: "none", border: "none", cursor: "pointer" }}
+              >
+                {t.icon}
+                <span className="hidden sm:inline">{t.label}</span>
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={onClose}
-            aria-label="Close tour"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-colors"
-            style={{ color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer" }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+            style={{ color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer" }}
           >
-            <X className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Close</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 relative overflow-hidden">
-        {has360 && tab === "360" ? (
-          <div className="w-full h-full relative">
-            {/* Loading state */}
-            {!iframeLoaded && !iframeError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "#1a2430" }}>
-                <div className="w-12 h-12 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(41,151,255,0.2)", borderTopColor: "#2997ff" }} />
-                <p className="text-sm mt-4" style={{ color: "rgba(255,255,255,0.7)" }}>Loading 360° view…</p>
-              </div>
-            )}
-            {/* Fallback */}
-            {iframeError ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "#1a2430" }}>
-                <Camera className="w-12 h-12 mb-4" style={{ color: "rgba(255,255,255,0.3)" }} />
-                <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>360° photo coming soon</p>
-                <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>Try the 3D walkthrough in the meantime</p>
-                <button
-                  onClick={() => setTab("3d")}
-                  className="mt-5 px-5 py-2.5 rounded-xl text-xs font-semibold"
-                  style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}
-                >
-                  View 3D Interior
-                </button>
-              </div>
-            ) : (
-              <iframe
-                src={flat.view_360_url!}
-                className="w-full h-full"
-                style={{ border: "none" }}
-                allow="xr-spatial-tracking; gyroscope; accelerometer"
-                allowFullScreen
-                onLoad={() => { setIframeLoaded(true); if (iframeTimerRef.current) clearTimeout(iframeTimerRef.current); }}
-                onError={() => setIframeError(true)}
-                ref={(el) => {
-                  if (el && !iframeLoaded) {
-                    if (iframeTimerRef.current) clearTimeout(iframeTimerRef.current);
-                    iframeTimerRef.current = setTimeout(() => setIframeError(true), 12000);
-                  }
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <FlatInterior3D flat={flat} isOffice={isOffice} />
-        )}
-      </div>
-
-      {/* Swipe hint on mobile */}
-      <div className="shrink-0 flex justify-center py-2 md:hidden" style={{ background: "rgba(13,17,23,0.8)" }}>
-        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Swipe down to close</p>
+        {tab === "photos"
+          ? <PhotoGallery photos={photos} />
+          : <FlatInterior3D flat={flat} isOffice={isOffice} />
+        }
       </div>
     </div>
   );
