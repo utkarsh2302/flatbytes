@@ -189,7 +189,7 @@ export default async function FlatSharePage({ params }: Props) {
         {/* FlatBytes footer */}
         <div className="mt-6 text-center">
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.35)" }}>
-            Shared via <Link href="/" style={{ color: "#0071e3", textDecoration: "none", fontWeight: 600 }}>FlatBytes</Link> · India's 3D flat explorer
+            Shared via <Link href="/" style={{ color: "#0071e3", textDecoration: "none", fontWeight: 600 }}>FlatBytes</Link> · India&apos;s 3D flat explorer
           </p>
         </div>
       </div>

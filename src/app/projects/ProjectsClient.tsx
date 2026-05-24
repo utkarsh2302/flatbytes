@@ -238,76 +238,76 @@ export default function ProjectsClient({ projects }: Props) {
     <>
       {/* Filter bar */}
       <div
-        className="flex flex-wrap items-center gap-2.5 mb-10 p-3 rounded-2xl"
+        className="mb-8 rounded-2xl overflow-hidden"
         style={{ background: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04)" }}
       >
-        {/* Search */}
-        <div className="relative flex-1 min-w-44">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "rgba(0,0,0,0.38)" }} />
-          <input
-            type="text"
-            placeholder="Search projects…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-2.5 rounded-xl outline-none text-sm"
-            style={{
-              background: "#f7f7f8",
-              border: "1.5px solid rgba(0,0,0,0.06)",
-              color: "#1d1d1f",
-            }}
-          />
-          {query && (
-            <button onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(0,0,0,0.35)" }}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+        {/* Search row */}
+        <div className="p-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "rgba(0,0,0,0.38)" }} />
+            <input
+              type="text"
+              placeholder="Search projects…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full pl-10 pr-9 rounded-xl outline-none text-sm"
+              style={{
+                height: 44,
+                background: "#f7f7f8",
+                border: "1.5px solid rgba(0,0,0,0.06)",
+                color: "#1d1d1f",
+              }}
+            />
+            {query ? (
+              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "rgba(0,0,0,0.35)" }}>
+                <X className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        {/* Type filter */}
-        <div className="flex gap-1.5">
+        {/* Filter chips row — horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 px-3 pb-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           {[
             { id: "All", label: "All" },
-            { id: "residential", label: `Residential (${residentialCount})` },
-            { id: "commercial", label: `Commercial (${commercialCount})` },
+            { id: "residential", label: `Residential` },
+            { id: "commercial", label: `Commercial` },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setTypeFilter(t.id)}
-              className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
-              style={
-                typeFilter === t.id
+              className="shrink-0 px-3.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                height: 34,
+                ...(typeFilter === t.id
                   ? { background: "#1d1d1f", color: "#fff" }
-                  : { background: "#f7f7f8", color: "rgba(0,0,0,0.56)" }
-              }
+                  : { background: "#f7f7f8", color: "rgba(0,0,0,0.56)" }),
+              }}
             >
               {t.label}
             </button>
           ))}
+
+          {cities.length > 2 && cities.slice(0, 4).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCity(c)}
+              className="shrink-0 px-3.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                height: 34,
+                ...(city === c
+                  ? { background: "#0071e3", color: "#fff" }
+                  : { background: "#f7f7f8", color: "rgba(0,0,0,0.56)" }),
+              }}
+            >
+              {c}
+            </button>
+          ))}
+
+          <span className="ml-auto shrink-0 text-xs" style={{ color: "rgba(0,0,0,0.38)", whiteSpace: "nowrap" }}>
+            {filtered.length} of {projects.length}
+          </span>
         </div>
-
-        {/* City filter */}
-        {cities.length > 2 && (
-          <div className="flex gap-1.5 flex-wrap">
-            {cities.slice(0, 4).map((c) => (
-              <button
-                key={c}
-                onClick={() => setCity(c)}
-                className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
-                style={
-                  city === c
-                    ? { background: "#0071e3", color: "#fff" }
-                    : { background: "#f7f7f8", color: "rgba(0,0,0,0.56)" }
-                }
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <span className="ml-auto text-xs shrink-0" style={{ color: "rgba(0,0,0,0.38)" }}>
-          {filtered.length} of {projects.length}
-        </span>
       </div>
 
       {/* Grid */}
