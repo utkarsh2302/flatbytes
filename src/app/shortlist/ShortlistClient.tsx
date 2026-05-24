@@ -116,38 +116,40 @@ export default function ShortlistClient() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f5f5f7", paddingTop: 64 }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-28 md:pb-12">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 style={{ fontSize: "1.625rem", fontWeight: 800, color: "#1d1d1f", letterSpacing: "-0.03em" }}>
-              My Shortlist
-            </h1>
-            <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.45)", marginTop: 4 }}>
-              {flats.length === 0 ? "No saved flats yet" : `${flats.length} flat${flats.length !== 1 ? "s" : ""} saved`}
-            </p>
-          </div>
-          {flats.length > 0 && (
-            <div className="flex items-center gap-2">
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 style={{ fontSize: "clamp(1.375rem,4vw,1.625rem)", fontWeight: 800, color: "#1d1d1f", letterSpacing: "-0.03em" }}>
+                My Shortlist
+              </h1>
+              <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.45)", marginTop: 4 }}>
+                {flats.length === 0 ? "No saved flats yet" : `${flats.length} flat${flats.length !== 1 ? "s" : ""} saved`}
+              </p>
+            </div>
+            {flats.length > 0 && (
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
                 style={{ background: "#fff", color: "#1d1d1f", border: "1px solid rgba(0,0,0,0.12)", cursor: "pointer" }}
               >
                 <Share2 className="w-4 h-4" />
-                {shareMsg ? "Link copied!" : "Share Shortlist"}
+                {shareMsg ? "Copied!" : "Share"}
               </button>
-              {compareIds.length >= 2 && (
-                <Link
-                  href={`/projects/${flats.find((f) => f.id === compareIds[0])?.project_id}?compare=${compareIds.join(",")}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-                  style={{ background: "#0071e3", color: "#fff", textDecoration: "none" }}
-                >
-                  <GitCompare className="w-4 h-4" />
-                  Compare {compareIds.length}
-                </Link>
-              )}
+            )}
+          </div>
+          {compareIds.length >= 2 && (
+            <div className="mt-3">
+              <Link
+                href={`/projects/${flats.find((f) => f.id === compareIds[0])?.project_id}?compare=${compareIds.join(",")}`}
+                className="flex items-center justify-center gap-2 w-full sm:w-auto sm:inline-flex px-5 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: "#0071e3", color: "#fff", textDecoration: "none" }}
+              >
+                <GitCompare className="w-4 h-4" />
+                Compare {compareIds.length} Flats
+              </Link>
             </div>
           )}
         </div>

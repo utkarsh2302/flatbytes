@@ -175,7 +175,7 @@ export default function SearchClient({ initialFlats, initialTypes, initialMaxPri
       </div>
 
       {/* ── Main content ──────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-10">
+      <div className="max-w-6xl mx-auto px-4 py-6 pb-28 md:pb-10 space-y-10">
         {grouped.length === 0 ? (
           <EmptyState onReset={() => { setSelectedTypes([]); setMaxPrice(undefined); router.push("/search"); }} />
         ) : (

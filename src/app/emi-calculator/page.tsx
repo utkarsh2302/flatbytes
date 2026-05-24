@@ -122,7 +122,7 @@ export default function EmiCalculatorPage() {
   return (
     <div className="min-h-screen" style={{ background: "#f5f5f7" }}>
       <Navbar />
-      <div className="pt-20 pb-16 px-4 max-w-6xl mx-auto">
+      <div className="pt-20 pb-28 md:pb-16 px-4 max-w-6xl mx-auto">
 
         {/* Page header */}
         <div className="mb-8">
