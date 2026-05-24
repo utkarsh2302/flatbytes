@@ -63,12 +63,14 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
   const [loanPct, setLoanPct] = useState(80);
   const [rate, setRate] = useState(8.5);
   const [tenure, setTenure] = useState(20);
+  const [budgetCr, setBudgetCr] = useState(1.5);
 
   useEffect(() => {
     setWishlisted(getWishlist().includes(flat.id));
   }, [flat.id]);
 
-  const loanAmount = Math.round(flat.total_price * loanPct / 100);
+  const budgetRs = Math.round(budgetCr * 10000000);
+  const loanAmount = Math.round(budgetRs * loanPct / 100);
   const emi = calcEMI(loanAmount, rate, tenure);
   const totalPayable = emi * tenure * 12;
   const interest = totalPayable - loanAmount;
@@ -297,6 +299,92 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
             style={{ background: "#fafafa", color: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,0,0,0.07)", fontSize: "0.8125rem" }}
           >
             This flat is <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{flat.status}</span> — WhatsApp us for alternatives
+          </div>
+        )}
+      </div>
+
+      {/* EMI Calculator */}
+      <div className="mx-5 mb-3 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.08)" }}>
+        <button
+          onClick={() => setShowEmi(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          style={{ background: "#f9f9fb", border: "none", cursor: "pointer" }}
+        >
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#1d1d1f" }}>EMI Calculator</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "rgba(0,113,227,0.1)", color: "#0055b3" }}>
+              Estimate
+            </span>
+          </div>
+          <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.35)", transform: showEmi ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {showEmi && (
+          <div className="px-4 pt-1 pb-4" style={{ background: "#fff", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            <p style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.4)", marginBottom: 12, lineHeight: 1.5 }}>
+              Enter your expected budget to estimate monthly EMI. Contact us for actual pricing.
+            </p>
+
+            {/* Budget slider */}
+            <div className="mb-3">
+              <div className="flex justify-between mb-1" style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.45)" }}>
+                <span>Your Budget</span>
+                <span style={{ fontWeight: 700, color: "#1d1d1f" }}>₹{budgetCr.toFixed(1)} Cr</span>
+              </div>
+              <input type="range" min={0.3} max={10} step={0.1} value={budgetCr}
+                onChange={e => setBudgetCr(Number(e.target.value))}
+                className="w-full" style={{ accentColor: "#0071e3" }} />
+              <div className="flex justify-between mt-0.5" style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.3)" }}>
+                <span>₹30L</span><span>₹10Cr</span>
+              </div>
+            </div>
+
+            {/* Loan % */}
+            <div className="mb-3">
+              <div className="flex justify-between mb-1" style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.45)" }}>
+                <span>Home Loan</span>
+                <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{loanPct}%</span>
+              </div>
+              <input type="range" min={50} max={90} step={5} value={loanPct}
+                onChange={e => setLoanPct(Number(e.target.value))}
+                className="w-full" style={{ accentColor: "#0071e3" }} />
+            </div>
+
+            {/* Tenure row */}
+            <div className="flex gap-1.5 mb-4">
+              {[10, 15, 20, 25, 30].map(y => (
+                <button key={y} onClick={() => setTenure(y)}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={tenure === y
+                    ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
+                    : { background: "#f5f5f7", color: "rgba(0,0,0,0.56)", border: "none", cursor: "pointer" }}>
+                  {y}yr
+                </button>
+              ))}
+            </div>
+
+            {/* EMI result */}
+            <div className="rounded-xl p-3.5" style={{ background: "linear-gradient(135deg,rgba(0,113,227,0.07),rgba(0,113,227,0.03))", border: "1px solid rgba(0,113,227,0.14)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Est. Monthly EMI</div>
+                  <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0071e3", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                    ₹{(emi / 100000).toFixed(1)}L
+                    <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "rgba(0,0,0,0.4)" }}>/mo</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Interest</div>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1d1d1f" }}>₹{(interest / 10000000).toFixed(2)} Cr</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between" style={{ fontSize: "0.7rem", color: "rgba(0,0,0,0.38)" }}>
+                <span>Loan: ₹{(loanAmount / 10000000).toFixed(2)} Cr @ {rate}%</span>
+                <span>{tenure} years</span>
+              </div>
+            </div>
+            <p style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.3)", marginTop: 8, fontStyle: "italic" }}>
+              Indicative only. Consult your bank for exact figures.
+            </p>
           </div>
         )}
       </div>

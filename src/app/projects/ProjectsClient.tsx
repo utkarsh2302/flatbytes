@@ -174,20 +174,9 @@ function ProjectCard({ project }: { project: Project }) {
         <div className="flex items-center justify-between">
           <div>
             <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.4)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Starting from
+              Pricing
             </div>
-            {project.price_starting != null ? (
-              <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.01em" }}>
-                ₹{(project.price_starting / 100000).toFixed(0)}L
-                {project.price_max != null && project.price_max > project.price_starting && (
-                  <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "rgba(0,0,0,0.42)" }}>
-                    {" "}– ₹{(project.price_max / 10000000).toFixed(1)}Cr
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(0,0,0,0.32)" }}>On request</div>
-            )}
+            <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0071e3", letterSpacing: "-0.01em" }}>On Request</div>
           </div>
 
           <div

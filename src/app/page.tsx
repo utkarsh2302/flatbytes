@@ -242,12 +242,8 @@ export default async function HomePage() {
                     </div>
                     <div className="p-4 flex items-center justify-between">
                       <div>
-                        <div style={{ fontSize: "0.68rem", color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</div>
-                        <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#1d1d1f" }}>
-                          {project.price_starting != null
-                            ? `₹${(project.price_starting / 100_000).toFixed(0)}L`
-                            : "On request"}
-                        </div>
+                        <div style={{ fontSize: "0.68rem", color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pricing</div>
+                        <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
                       </div>
                       <div className="text-right">
                         <div style={{ fontSize: "1rem", fontWeight: 700, color: "#059669" }}>{s.available}</div>

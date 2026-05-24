@@ -10,18 +10,6 @@ interface Props {
   params: { projectId: string; flatId: string };
 }
 
-function formatPrice(p: number) {
-  if (p >= 10000000) return `₹${(p / 10000000).toFixed(2)} Cr`;
-  if (p >= 100000) return `₹${(p / 100000).toFixed(1)} L`;
-  return `₹${p.toLocaleString("en-IN")}`;
-}
-
-function calcEMI(principal: number) {
-  const r = 8.5 / 100 / 12;
-  const n = 240;
-  return Math.round((principal * 0.8 * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
-}
-
 const STATUS_COLOR: Record<string, string> = {
   available: "#34c759", sold: "#ff3b30", reserved: "#ff9500", held: "#af52de", discussion: "#007aff",
 };
@@ -57,7 +45,6 @@ export default async function FlatSharePage({ params }: Props) {
     : ["south-east","south"].includes(lifeData.facing)               ? "☀ Afternoon Sun"
     : ["south-west","west","north-west"].includes(lifeData.facing)   ? "🌇 Evening Sun"
     : "🌤 Indirect Light";
-  const emi = calcEMI(flat.total_price);
   const sc = STATUS_COLOR[flat.status] ?? "#aaa";
 
   const waMessage = encodeURIComponent(
@@ -139,22 +126,17 @@ export default async function FlatSharePage({ params }: Props) {
             <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.5)", marginTop: 8, lineHeight: 1.5 }}>{lifeData.vastuSummary}</p>
           </div>
 
-          {/* EMI estimate */}
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.38)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                  Pricing
-                </div>
-                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
+          {/* Pricing */}
+          <div className="px-6 py-4 flex items-center justify-between gap-4" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)", background: "rgba(0,113,227,0.03)" }}>
+            <div>
+              <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.38)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                Pricing
               </div>
-              <div>
-                <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(0,0,0,0.38)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                  Est. Monthly EMI
-                </div>
-                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f" }}>{formatPrice(emi)}<span style={{ fontSize: "0.75rem", fontWeight: 500, color: "rgba(0,0,0,0.4)" }}>/mo</span></div>
-                <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.35)", marginTop: 2 }}>80% loan · 8.5% · 20 yrs</div>
-              </div>
+              <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
+              <div style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.4)", marginTop: 2 }}>WhatsApp us for a personalised cost sheet</div>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0" style={{ background: "rgba(0,113,227,0.1)", color: "#0071e3", border: "1px solid rgba(0,113,227,0.2)" }}>
+              Get Details →
             </div>
           </div>
 
