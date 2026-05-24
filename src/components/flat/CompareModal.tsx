@@ -75,6 +75,7 @@ export default function CompareModal({ flats, projectName, onClose }: Props) {
           background: "#ffffff",
           boxShadow: "rgba(0,0,0,0.5) 0px 24px 80px 0px",
           borderRadius: "20px 20px 0 0",
+          animation: "slideUpSheet 0.32s cubic-bezier(0.34,1.2,0.64,1)",
         }}
       >
         {/* Header */}
@@ -188,7 +189,7 @@ export default function CompareModal({ flats, projectName, onClose }: Props) {
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-5 py-3 shrink-0" style={{ borderTop: "1px solid rgba(0,0,0,0.08)", background: "#f5f5f7" }}>
           <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.42)", flex: 1 }}>
-            Green = better value. EMI: 80% loan @ 8.5% for 20yr.
+            Green highlight = better value. Contact us for pricing details.
           </p>
           <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: 8, background: "#e5e5ea", color: "#1d1d1f", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
             Done
