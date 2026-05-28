@@ -288,6 +288,10 @@ input[type="range"] { accent-color: #0071e3; }
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
 .bottom-sheet-backdrop {
   position: fixed;
   inset: 0;

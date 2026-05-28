@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/layout/BottomNav";
+import Toaster from "@/components/ui/Toaster";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className={`min-h-screen antialiased ${dmSans.className}`}>
         {children}
         <BottomNav />
+        <Toaster />
       </body>
     </html>
   );

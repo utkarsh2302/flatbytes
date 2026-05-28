@@ -9,6 +9,7 @@ import {
   ChevronDown, Phone, Heart,
 } from "lucide-react";
 import type { FlatType } from "@/lib/types";
+import { showToast } from "@/lib/toast";
 import type { FlatWithProject } from "@/lib/data";
 import { FLAT_TYPE_LABELS, STATUS_COLORS } from "@/lib/types";
 import dynamic from "next/dynamic";
@@ -298,9 +299,11 @@ function FlatCard({
     try {
       const ids: string[] = JSON.parse(localStorage.getItem("flatbytes_wishlist") ?? "[]");
       const next = ids.includes(flat.id) ? ids.filter(x => x !== flat.id) : [...ids, flat.id];
+      const adding = !ids.includes(flat.id);
       localStorage.setItem("flatbytes_wishlist", JSON.stringify(next));
       setWishlisted(!wishlisted);
       window.dispatchEvent(new Event("storage"));
+      showToast(adding ? "Added to Shortlist ❤️" : "Removed from Shortlist", adding ? "success" : "info");
     } catch {}
   }
 

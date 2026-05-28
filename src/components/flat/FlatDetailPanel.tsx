@@ -7,6 +7,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import UnifiedLeadForm from "@/components/buyer/UnifiedLeadForm";
 import { analyzeLivingExperience } from "@/lib/living-experience";
 import { X, Maximize2, Compass, Layers, GitCompare, Eye, Heart, Share2 } from "lucide-react";
+import { showToast } from "@/lib/toast";
 
 interface Props {
   flat: Flat;
@@ -94,6 +95,7 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
   const handleWishlist = () => {
     const added = toggleWishlistItem(flat.id);
     setWishlisted(added);
+    showToast(added ? "Added to Shortlist ❤️" : "Removed from Shortlist", added ? "success" : "info");
   };
 
   const handleShare = () => {
