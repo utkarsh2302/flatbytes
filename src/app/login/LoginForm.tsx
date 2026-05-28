@@ -191,7 +191,15 @@ export default function LoginForm() {
                 maxLength={6}
                 placeholder="123456"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setOtp(v);
+                  if (v.length === 6) {
+                    setTimeout(() => {
+                      (e.target.closest("form") as HTMLFormElement | null)?.requestSubmit();
+                    }, 80);
+                  }
+                }}
                 style={{ ...inputStyle, letterSpacing: "0.25em", textAlign: "center", fontSize: 20 }}
                 autoFocus
                 autoComplete="one-time-code"
