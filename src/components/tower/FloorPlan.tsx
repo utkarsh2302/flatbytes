@@ -1,14 +1,8 @@
 "use client";
 
 import type { Flat, FlatStatus } from "@/lib/types";
-import { STATUS_LABELS, FLAT_TYPE_LABELS } from "@/lib/types";
+import { FLAT_TYPE_LABELS } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
-
-function fmtPrice(p: number) {
-  if (p >= 10000000) return `₹${(p / 10000000).toFixed(1)}Cr`;
-  if (p >= 100000) return `₹${(p / 100000).toFixed(0)}L`;
-  return `₹${p.toLocaleString("en-IN")}`;
-}
 
 interface Props {
   flats: Flat[];
@@ -27,20 +21,20 @@ const LIGHT_STATUS: Record<FlatStatus, { bg: string; border: string; text: strin
   discussion: { bg: "rgba(0,113,227,0.08)",   border: "rgba(0,113,227,0.3)",   text: "#0055b3" },
 };
 
-const FLAT_W = 124;
-const FLAT_H = 96;
-const COLS = 2;
-const GAP = 12;
-
 export default function FloorPlan({
   flats, floor, totalFloors, onFlatSelect, onFloorChange, selectedFlatId,
 }: Props) {
   const floorFlats = flats.filter((f) => f.floor === floor);
 
+  // Determine column count based on flat count — always fills screen width
+  const cols = floorFlats.length <= 2 ? 2
+    : floorFlats.length <= 6 ? 3
+    : 4;
+
   return (
     <div className="flex flex-col h-full">
       {/* Floor selector */}
-      <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {Array.from({ length: totalFloors }, (_, i) => i + 1)
           .reverse()
           .map((f) => (
@@ -60,7 +54,7 @@ export default function FloorPlan({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+      <div className="flex items-center gap-3 mb-4 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
         {(["available", "sold", "reserved", "discussion"] as FlatStatus[]).map((s) => (
           <StatusBadge key={s} status={s} size="sm" />
         ))}
@@ -69,23 +63,26 @@ export default function FloorPlan({
       {/* Floor summary strip */}
       {floorFlats.length > 0 && (() => {
         const avail = floorFlats.filter(f => f.status === "available").length;
-        const sold = floorFlats.filter(f => f.status === "sold").length;
-        const res = floorFlats.filter(f => f.status === "reserved").length;
+        const sold  = floorFlats.filter(f => f.status === "sold").length;
+        const res   = floorFlats.filter(f => f.status === "reserved").length;
         return (
-          <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard overflow-x-auto" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", scrollbarWidth: "none", flexShrink: 0, minHeight: 36 }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f", whiteSpace: "nowrap" }}>Floor {floor}</span>
+          <div
+            className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard"
+            style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}
+          >
+            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f" }}>Floor {floor}</span>
             <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
-            {avail > 0 && <span style={{ fontSize: "0.75rem", color: "#1a7f4a", fontWeight: 600, whiteSpace: "nowrap" }}>{avail} Available</span>}
-            {sold > 0 && <span style={{ fontSize: "0.75rem", color: "#d70015", fontWeight: 600, whiteSpace: "nowrap" }}>{sold} Sold</span>}
-            {res > 0 && <span style={{ fontSize: "0.75rem", color: "#c25000", fontWeight: 600, whiteSpace: "nowrap" }}>{res} Reserved</span>}
+            {avail > 0 && <span style={{ fontSize: "0.75rem", color: "#1a7f4a", fontWeight: 600 }}>{avail} Available</span>}
+            {sold  > 0 && <span style={{ fontSize: "0.75rem", color: "#d70015", fontWeight: 600 }}>{sold} Sold</span>}
+            {res   > 0 && <span style={{ fontSize: "0.75rem", color: "#c25000", fontWeight: 600 }}>{res} Reserved</span>}
             <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
-            <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.45)", whiteSpace: "nowrap", fontStyle: "italic" }}>Price on request</span>
+            <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.45)", fontStyle: "italic" }}>On Request</span>
           </div>
         );
       })()}
 
-      {/* Floor grid */}
-      <div className="flex-1 overflow-auto">
+      {/* Floor grid — fluid, fills available width */}
+      <div className="flex-1">
         {floorFlats.length === 0 ? (
           <div
             className="flex items-center justify-center h-40 rounded-large text-caption"
@@ -94,90 +91,96 @@ export default function FloorPlan({
             No data for Floor {floor}
           </div>
         ) : (
-          <div className="flex justify-center">
+          <div
+            className="relative rounded-2xl overflow-hidden w-full"
+            style={{
+              background: "#ffffff",
+              padding: 14,
+              boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.06)",
+            }}
+          >
+            {/* Floor label */}
             <div
-              className="relative rounded-large overflow-hidden"
+              className="absolute top-2.5 right-3 text-micro"
+              style={{ color: "rgba(0,0,0,0.3)", fontWeight: 500, zIndex: 1 }}
+            >
+              Floor {floor}
+            </div>
+
+            {/* Corridor divider — only when 2 even columns */}
+            {cols === 2 && (
+              <>
+                <div
+                  className="absolute left-1/2 -translate-x-px"
+                  style={{ top: 14, bottom: 14, width: 1, background: "rgba(0,0,0,0.07)" }}
+                />
+                <div
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
+                  style={{
+                    color: "rgba(0,0,0,0.15)",
+                    fontSize: "0.6rem",
+                    fontWeight: 600,
+                    transform: "translateX(-50%) translateY(-50%) rotate(90deg)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    zIndex: 0,
+                  }}
+                >
+                  Corridor
+                </div>
+              </>
+            )}
+
+            {/* Fluid grid — tiles fill the screen, no fixed widths */}
+            <div
+              className="grid w-full"
               style={{
-                background: "#ffffff",
-                padding: 24,
-                boxShadow: "rgba(0,0,0,0.12) 0px 2px 16px 0px",
-                border: "1px solid rgba(0,0,0,0.06)",
+                gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                gap: 10,
               }}
             >
-              {/* Floor label */}
-              <div
-                className="absolute top-3 right-4 text-micro"
-                style={{ color: "rgba(0,0,0,0.35)", fontWeight: 500 }}
-              >
-                Floor {floor}
-              </div>
-
-              {/* Corridor line */}
-              <div
-                className="absolute left-1/2 -translate-x-px"
-                style={{ top: 24, bottom: 24, width: 1, background: "rgba(0,0,0,0.08)" }}
-              />
-              <div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-micro select-none"
-                style={{
-                  color: "rgba(0,0,0,0.2)",
-                  transform: "translateX(-50%) translateY(-50%) rotate(90deg)",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Corridor
-              </div>
-
-              {/* Flat cells */}
-              <div
-                className="grid"
-                style={{
-                  gridTemplateColumns: `repeat(${COLS}, ${FLAT_W}px)`,
-                  gap: GAP,
-                }}
-              >
-                {floorFlats.map((flat) => {
-                  const s = LIGHT_STATUS[flat.status];
-                  const isSelected = flat.id === selectedFlatId;
-                  return (
-                    <button
-                      key={flat.id}
-                      onClick={() => onFlatSelect(flat)}
-                      className="relative rounded-standard text-left p-3 transition-all hover:scale-[1.03]"
-                      style={{
-                        width: FLAT_W,
-                        height: FLAT_H,
-                        background: isSelected ? s.bg.replace("0.08", "0.18") : s.bg,
-                        border: `1.5px solid ${isSelected ? s.border.replace("0.3", "0.7") : s.border}`,
-                        boxShadow: isSelected ? `0 0 0 3px ${s.border}` : "none",
-                      }}
-                    >
-                      <div className="text-micro font-semibold mb-1" style={{ color: s.text }}>
-                        {flat.flat_number}
+              {floorFlats.map((flat) => {
+                const s = LIGHT_STATUS[flat.status];
+                const isSelected = flat.id === selectedFlatId;
+                return (
+                  <button
+                    key={flat.id}
+                    onClick={() => onFlatSelect(flat)}
+                    className="relative rounded-xl text-left transition-all active:scale-95"
+                    style={{
+                      padding: "10px 10px 24px",
+                      minHeight: 88,
+                      background: isSelected ? s.bg.replace("0.08", "0.18") : s.bg,
+                      border: `1.5px solid ${isSelected ? s.border.replace("0.3", "0.7") : s.border}`,
+                      boxShadow: isSelected ? `0 0 0 2px ${s.border}` : "none",
+                      width: "100%",
+                    }}
+                  >
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: s.text, marginBottom: 2 }}>
+                      {flat.flat_number}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "#1d1d1f", lineHeight: 1.2 }}>
+                      {FLAT_TYPE_LABELS[flat.flat_type]}
+                    </div>
+                    <div style={{ fontSize: "0.65rem", color: "rgba(0,0,0,0.42)", marginTop: 2 }}>
+                      {flat.carpet_area_sqft} sq.ft
+                    </div>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 600, color: s.text, marginTop: 2 }}>
+                      On Request
+                    </div>
+                    {flat.facing && (
+                      <div
+                        className="absolute bottom-2 right-2"
+                        style={{ fontSize: "0.6rem", color: s.text, opacity: 0.65 }}
+                      >
+                        {facingArrow(flat.facing)}
                       </div>
-                      <div className="text-micro font-medium" style={{ color: "#1d1d1f" }}>
-                        {FLAT_TYPE_LABELS[flat.flat_type]}
-                      </div>
-                      <div style={{ fontSize: "0.6875rem", color: "rgba(0,0,0,0.42)", marginTop: 2 }}>
-                        {flat.carpet_area_sqft} sq.ft
-                      </div>
-                      <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: s.text, marginTop: 3 }}>
-                        On Request
-                      </div>
-                      {flat.facing && (
-                        <div
-                          className="absolute bottom-2 right-2"
-                          style={{ fontSize: "0.625rem", color: s.text, opacity: 0.7 }}
-                        >
-                          {facingArrow(flat.facing)}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

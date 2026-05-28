@@ -151,6 +151,25 @@ export default function ProjectExplorer({ project }: Props) {
   const filteredFlats = useMemo(() => applyFilters(allFlats, filters), [allFlats, filters]);
   const filterCount  = filters.flatType.length + filters.status.length + filters.facing.length;
 
+  // Auto-jump to best floor whenever BHK type filter changes mid-session
+  useEffect(() => {
+    if (filters.flatType.length === 0) return;
+    const towerFlats = activeTower?.flats ?? [];
+    const hasMatchOnCurrent = towerFlats.some(
+      f => f.floor === currentFloor && filters.flatType.includes(f.flat_type)
+    );
+    if (hasMatchOnCurrent) return;
+    // Find highest floor with available matching flats, else any matching floor
+    const matching = towerFlats.filter(f => filters.flatType.includes(f.flat_type));
+    if (matching.length === 0) return;
+    const avail = matching.filter(f => f.status === "available");
+    const pool = avail.length > 0 ? avail : matching;
+    const bestFloor = pool.reduce((best, f) => f.floor > best ? f.floor : best, pool[0].floor);
+    setSelectedFloor(bestFloor);
+    setSelectedFlat(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.flatType]);
+
   // Available BHK types across all flats (for quick-select chips)
   const availableBhkTypes = useMemo(() => {
     const types = Array.from(new Set(
@@ -526,14 +545,19 @@ export default function ProjectExplorer({ project }: Props) {
               <div className="lg:hidden shrink-0 flex items-center gap-1.5 px-4 py-2.5 overflow-x-auto"
                 style={{ background:"#fff", borderBottom:"1px solid rgba(0,0,0,0.08)", scrollbarWidth:"none" }}>
                 <span className="shrink-0 text-xs font-semibold mr-1" style={{ color:"rgba(0,0,0,0.32)", letterSpacing:"0.04em" }}>FLOOR</span>
-                {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
+                {Array.from({ length: totalFloors }, (_, i) => totalFloors - i)
+                  .filter(f => {
+                    // When BHK filter is active, hide floors with no matching flats entirely
+                    if (filters.flatType.length === 0) return true;
+                    const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
+                    return fp.some(fl => filters.flatType.includes(fl.flat_type));
+                  })
+                  .map(f => {
                   const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
-                  // Filter by active type if set, for accurate dot color
                   const typed = filters.flatType.length > 0
                     ? fp.filter(fl => filters.flatType.includes(fl.flat_type))
                     : fp;
                   const hasAvail = typed.some(fl => fl.status === "available");
-                  const hasAny = typed.length > 0;
                   const active = f === currentFloor;
                   return (
                     <button key={f}
@@ -541,14 +565,13 @@ export default function ProjectExplorer({ project }: Props) {
                       className="shrink-0 flex flex-col items-center justify-center rounded-xl transition-all"
                       style={{
                         minWidth: 44, height: 52,
-                        background: active ? "#0071e3" : fp.length ? "#f5f5f7" : "transparent",
-                        color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
+                        background: active ? "#0071e3" : "#f5f5f7",
+                        color: active ? "#fff" : "#1d1d1f",
                         fontWeight: active ? 700 : 500, fontSize: "0.875rem",
-                        border: active ? "none" : fp.length ? "1px solid rgba(0,0,0,0.09)" : "none",
-                        opacity: filters.flatType.length > 0 && !hasAny ? 0.3 : 1,
+                        border: active ? "none" : "1px solid rgba(0,0,0,0.09)",
                       }}>
                       {f}
-                      {!active && fp.length > 0 && (
+                      {!active && (
                         <div style={{ width:5, height:5, borderRadius:"50%", marginTop:3,
                           background: hasAvail ? "#34c759" : "#ff9500" }}/>
                       )}
@@ -567,9 +590,14 @@ export default function ProjectExplorer({ project }: Props) {
                     Floor
                   </div>
                   <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth:"none" }}>
-                    {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(f => {
+                    {Array.from({ length: totalFloors }, (_, i) => totalFloors - i)
+                      .filter(f => {
+                        if (filters.flatType.length === 0) return true;
+                        const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
+                        return fp.some(fl => filters.flatType.includes(fl.flat_type));
+                      })
+                      .map(f => {
                       const fp = (activeTower?.flats ?? []).filter(fl => fl.floor === f);
-                      // Respect BHK type filter for dot counts
                       const typed = filters.flatType.length > 0
                         ? fp.filter(fl => filters.flatType.includes(fl.flat_type))
                         : fp;
@@ -577,7 +605,7 @@ export default function ProjectExplorer({ project }: Props) {
                       const soC = typed.filter(fl => fl.status === "sold").length;
                       const reC = typed.filter(fl => fl.status === "reserved").length;
                       const active = f === currentFloor;
-                      const dimmed = filters.flatType.length > 0 && typed.length === 0 && fp.length > 0;
+                      const dimmed = false;
                       const isHighFloor = f >= Math.ceil(totalFloors * 0.75);
                       const isGroundLevel = f <= 2;
                       const qualityTag = isHighFloor ? { label:"✦", title:"Premium Floor", color:"#c25000" }
@@ -593,12 +621,12 @@ export default function ProjectExplorer({ project }: Props) {
                             color: active ? "#fff" : fp.length ? "#1d1d1f" : "rgba(0,0,0,0.2)",
                             background: active ? "#0071e3" : "transparent",
                             cursor: fp.length ? "pointer" : "default",
-                            opacity: dimmed ? 0.35 : 1,
+                            opacity: 1,
                           }}
                           title={qualityTag?.title}>
                           <span>{f}</span>
                           <div className="flex items-center gap-0.5">
-                            {qualityTag && !active && !dimmed && (
+                            {qualityTag && !active && (
                               <span style={{ fontSize:"0.5rem", fontWeight:700, color: qualityTag.color, lineHeight:1 }}>
                                 {qualityTag.label}
                               </span>
