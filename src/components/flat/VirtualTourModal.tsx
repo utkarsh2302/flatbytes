@@ -1,21 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { Flat } from "@/lib/types";
-import { X, Box, Images, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Images, ChevronLeft, ChevronRight } from "lucide-react";
 import { FLAT_TYPE_LABELS } from "@/lib/types";
-
-const FlatInterior3D = dynamic(() => import("./FlatInterior3D"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center" style={{ background: "#0d1117" }}>
-      <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(28,199,127,0.15)", borderTopColor: "#1cc77f" }} />
-      <p className="text-sm mt-4" style={{ color: "rgba(255,255,255,0.5)" }}>Building 3D interior…</p>
-    </div>
-  ),
-});
 
 // Curated interior photo sets per flat type
 // Each entry: { room, url (Unsplash direct), credit }
@@ -215,7 +204,6 @@ interface Props {
 }
 
 export default function VirtualTourModal({ flat, onClose }: Props) {
-  const [tab, setTab] = useState<"3d" | "photos">("photos");
   const isOffice = /office/.test(flat.flat_type);
   const photos = photosForFlat(flat);
 
@@ -226,15 +214,8 @@ export default function VirtualTourModal({ flat, onClose }: Props) {
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
 
-  const [touchStartY, setTouchStartY] = useState(0);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "#0a0d12" }}
-      onTouchStart={e => setTouchStartY(e.touches[0].clientY)}
-      onTouchEnd={e => { if (tab === "3d" && e.changedTouches[0].clientY - touchStartY > 80) onClose(); }}
-    >
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0a0d12" }}>
       {/* Header */}
       <div
         className="shrink-0 flex items-center justify-between gap-3 px-4 py-3"
@@ -242,34 +223,18 @@ export default function VirtualTourModal({ flat, onClose }: Props) {
       >
         <div className="min-w-0">
           <div style={{ fontWeight: 600, fontSize: 14, color: "#fff" }} className="truncate">
-            {isOffice ? "Unit" : "Flat"} {flat.flat_number}
+            {isOffice ? "Unit" : "Flat"} {flat.flat_number} · Interior
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
-            {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft
+            {FLAT_TYPE_LABELS[flat.flat_type] ?? flat.flat_type.toUpperCase()} · Floor {flat.floor} · {flat.carpet_area_sqft} sq.ft · Sample photos
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Tab switcher */}
-          <div className="flex items-center gap-0.5 rounded-xl p-0.5" style={{ background: "rgba(255,255,255,0.07)" }}>
-            {([
-              { id: "photos" as const, label: "Photos",      icon: <Images className="w-3.5 h-3.5" /> },
-              { id: "3d"     as const, label: "3D Interior", icon: <Box    className="w-3.5 h-3.5" /> },
-            ]).map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={tab === t.id
-                  ? { background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }
-                  : { color: "rgba(255,255,255,0.55)", background: "none", border: "none", cursor: "pointer" }}
-              >
-                {t.icon}
-                <span className="hidden sm:inline">{t.label}</span>
-              </button>
-            ))}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.07)" }}>
+            <Images className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.5)" }}/>
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Interior Photos</span>
           </div>
-
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
@@ -282,10 +247,7 @@ export default function VirtualTourModal({ flat, onClose }: Props) {
 
       {/* Body */}
       <div className="flex-1 relative overflow-hidden">
-        {tab === "photos"
-          ? <PhotoGallery photos={photos} />
-          : <FlatInterior3D flat={flat} isOffice={isOffice} />
-        }
+        <PhotoGallery photos={photos} />
       </div>
     </div>
   );

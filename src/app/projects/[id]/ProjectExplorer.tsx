@@ -322,7 +322,7 @@ export default function ProjectExplorer({ project }: Props) {
           {([
             { id:"visual",   icon:<ImageIcon className="w-3.5 h-3.5"/>, label:"Visual" },
             { id:"3d",       icon:<Box className="w-3.5 h-3.5"/>,     label:"3D" },
-            { id:"floor",    icon:<Layers className="w-3.5 h-3.5"/>,  label:"Floor" },
+            { id:"floor",    icon:<Layers className="w-3.5 h-3.5"/>,  label:"Units" },
             { id:"overview", icon:<BarChart2 className="w-3.5 h-3.5"/>, label:"Info" },
           ] as const).map(v => (
             <button key={v.id} onClick={() => setView(v.id)}
@@ -457,17 +457,19 @@ export default function ProjectExplorer({ project }: Props) {
                         {project.location}
                       </p>
                       <div className="flex items-center gap-2.5 mt-4 flex-wrap">
-                        <button onClick={() => setView("3d")}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
-                          style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
-                          <Box className="w-4 h-4"/>
-                          Explore in 3D
-                        </button>
+                        {project.model_3d_url && (
+                          <button onClick={() => setView("3d")}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                            style={{ background: "#0071e3", color: "#fff", border: "none", cursor: "pointer" }}>
+                            <Box className="w-4 h-4"/>
+                            Explore in 3D
+                          </button>
+                        )}
                         <button onClick={() => setView("floor")}
                           className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
-                          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
+                          style={{ background: project.model_3d_url ? "rgba(255,255,255,0.1)" : "#0071e3", backdropFilter: "blur(8px)", color: "#fff", border: project.model_3d_url ? "1px solid rgba(255,255,255,0.2)" : "none", cursor: "pointer" }}>
                           <Layers className="w-4 h-4"/>
-                          Browse Flats
+                          Browse Units
                         </button>
                       </div>
                     </div>
@@ -499,12 +501,40 @@ export default function ProjectExplorer({ project }: Props) {
           {view === "3d" && (
             <div className="w-full h-full relative" style={{ background:"#020917" }}
               role="region" aria-label="Interactive 3D building model">
-              <ModelViewer
-                modelPath={project.model_3d_url ?? undefined}
-                buildingType={project.project_type === "commercial" ? "commercial" : "residential"}
-                isUnderConstruction={project.status === "active" || (project.construction_percentage ?? 100) < 100}
-                totalFloors={activeTower?.total_floors ?? project.total_floors ?? 20}
-                onFloorClick={handleFloorSelect}/>
+              {project.model_3d_url ? (
+                <ModelViewer
+                  modelPath={project.model_3d_url}
+                  buildingType={project.project_type === "commercial" ? "commercial" : "residential"}
+                  isUnderConstruction={project.status === "active" || (project.construction_percentage ?? 100) < 100}
+                  totalFloors={activeTower?.total_floors ?? project.total_floors ?? 20}
+                  onFloorClick={handleFloorSelect}/>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
+                  {project.cover_image_url && (
+                    <Image src={project.cover_image_url} alt={project.name} fill className="object-cover opacity-20" sizes="100vw" />
+                  )}
+                  <div className="absolute inset-0" style={{ background:"linear-gradient(to bottom,rgba(2,9,23,0.4) 0%,rgba(2,9,23,0.85) 100%)" }}/>
+                  <div className="relative z-10 flex flex-col items-center text-center max-w-sm px-6 gap-5">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)" }}>
+                      <Box className="w-8 h-8" style={{ color:"rgba(255,255,255,0.35)" }}/>
+                    </div>
+                    <div>
+                      <div style={{ fontSize:"1.125rem", fontWeight:700, color:"#fff", letterSpacing:"-0.01em", marginBottom:6 }}>
+                        3D Model Coming Soon
+                      </div>
+                      <div style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.45)", lineHeight:1.6 }}>
+                        The architectural 3D visualization for {project.name} is being prepared.
+                      </div>
+                    </div>
+                    <button onClick={() => setView("floor")}
+                      className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all"
+                      style={{ background:"#0071e3", color:"#fff", border:"none", cursor:"pointer" }}>
+                      <Layers className="w-4 h-4"/>
+                      Browse Available Units
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* ── Bottom HUD ── */}
               <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none"
@@ -560,7 +590,7 @@ export default function ProjectExplorer({ project }: Props) {
                       onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="#0077ED"}
                       onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="#0071e3"}>
                       <Layers className="w-4 h-4"/>
-                      View Floor Plans
+                      Browse Units
                     </button>
                     <button onClick={() => setView("overview")}
                       className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-standard font-semibold transition-all"
@@ -921,7 +951,7 @@ export default function ProjectExplorer({ project }: Props) {
                                   style={{ background:"rgba(0,113,227,0.08)", color:"#0071e3", border:"1px solid rgba(0,113,227,0.16)" }}
                                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="rgba(0,113,227,0.16)"}
                                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="rgba(0,113,227,0.08)"}>
-                                  <Box className="w-3 h-3"/> 3D Tour
+                                  <ImageIcon className="w-3 h-3"/> View Photos
                                 </button>
                                 <span style={{ fontSize:"0.6875rem", color:"rgba(0,0,0,0.32)", fontStyle:"italic" }}>
                                   {flat.status === "available" ? "On Request" : ""}
