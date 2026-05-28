@@ -123,16 +123,34 @@ export default function ProjectExplorer({ project }: Props) {
     } catch {}
   }, [project.id, project.name, project.location, project.cover_image_url, project.towers]);
 
-  // Pre-populate BHK filter from URL (e.g. ?types=3bhk from search page)
+  // Pre-populate BHK filter + open specific flat from URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const typesParam = params.get("types");
-    if (!typesParam) return;
+    const flatParam  = params.get("flat");
     const valid = ["studio","1bhk","2bhk","3bhk","4bhk","penthouse","office","office_floor"];
-    const types = typesParam.split(",").filter(t => valid.includes(t)) as import("@/lib/types").FlatType[];
+
+    // Handle ?types= — BHK filter
+    let types: import("@/lib/types").FlatType[] = [];
+    if (typesParam) {
+      types = typesParam.split(",").filter(t => valid.includes(t)) as import("@/lib/types").FlatType[];
+      if (types.length > 0) setFilters(prev => ({ ...prev, flatType: types }));
+    }
+
+    // Handle ?flat= — open the specific flat directly
+    if (flatParam) {
+      const allFlatsInProject = project.towers.flatMap(t => t.flats);
+      const target = allFlatsInProject.find(f => f.id === flatParam);
+      if (target) {
+        setSelectedFloor(target.floor);
+        setSelectedFlat(target);
+        setView("floor");
+        return;
+      }
+    }
+
+    // No specific flat — jump to best floor for BHK type
     if (types.length > 0) {
-      setFilters(prev => ({ ...prev, flatType: types }));
-      // Auto-jump to the floor with the most available flats matching the type
       const allFlatsForType = project.towers.flatMap(t => t.flats)
         .filter(f => types.includes(f.flat_type) && f.status === "available");
       if (allFlatsForType.length > 0) {
