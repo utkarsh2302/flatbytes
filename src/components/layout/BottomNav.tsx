@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calculator, Search, Grid3X3, Heart } from "lucide-react";
+import { Calculator, Search, Grid3X3, Heart, Home } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function BottomNav() {
@@ -21,16 +21,15 @@ export default function BottomNav() {
 
   const hide =
     pathname.startsWith("/projects/") ||
-    pathname.startsWith("/admin") ||
-    pathname === "/";
+    pathname.startsWith("/admin");
 
   if (hide) return null;
 
   const navItems = [
+    { label: "Home",      href: "/",              icon: Home,      badge: 0 },
     { label: "Browse",    href: "/projects",      icon: Grid3X3,   badge: 0 },
     { label: "Search",    href: "/search",        icon: Search,    badge: 0 },
     { label: "Shortlist", href: "/shortlist",      icon: Heart,     badge: wishCount },
-    { label: "EMI Calc",  href: "/emi-calculator", icon: Calculator, badge: 0 },
   ];
 
   return (

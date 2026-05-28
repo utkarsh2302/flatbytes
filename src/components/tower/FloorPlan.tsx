@@ -55,7 +55,7 @@ export default function FloorPlan({
 
       {/* Legend */}
       <div className="flex items-center gap-3 mb-4 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
-        {(["available", "sold", "reserved", "discussion"] as FlatStatus[]).map((s) => (
+        {(["available", "sold", "reserved", "held", "discussion"] as FlatStatus[]).map((s) => (
           <StatusBadge key={s} status={s} size="sm" />
         ))}
       </div>
@@ -65,18 +65,22 @@ export default function FloorPlan({
         const avail = floorFlats.filter(f => f.status === "available").length;
         const sold  = floorFlats.filter(f => f.status === "sold").length;
         const res   = floorFlats.filter(f => f.status === "reserved").length;
+        const disc  = floorFlats.filter(f => f.status === "discussion").length;
+        const held  = floorFlats.filter(f => f.status === "held").length;
         return (
           <div
-            className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard"
-            style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}
+            className="flex items-center gap-2.5 mb-4 px-3.5 py-2 rounded-standard overflow-x-auto"
+            style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", flexShrink: 0, scrollbarWidth: "none" }}
           >
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f" }}>Floor {floor}</span>
+            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d1d1f", flexShrink: 0 }}>Floor {floor}</span>
             <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
-            {avail > 0 && <span style={{ fontSize: "0.75rem", color: "#1a7f4a", fontWeight: 600 }}>{avail} Available</span>}
-            {sold  > 0 && <span style={{ fontSize: "0.75rem", color: "#d70015", fontWeight: 600 }}>{sold} Sold</span>}
-            {res   > 0 && <span style={{ fontSize: "0.75rem", color: "#c25000", fontWeight: 600 }}>{res} Reserved</span>}
+            {avail > 0 && <span style={{ fontSize: "0.75rem", color: "#1a7f4a", fontWeight: 600, flexShrink: 0 }}>{avail} Available</span>}
+            {sold  > 0 && <span style={{ fontSize: "0.75rem", color: "#d70015", fontWeight: 600, flexShrink: 0 }}>{sold} Sold</span>}
+            {res   > 0 && <span style={{ fontSize: "0.75rem", color: "#c25000", fontWeight: 600, flexShrink: 0 }}>{res} Reserved</span>}
+            {disc  > 0 && <span style={{ fontSize: "0.75rem", color: "#0055b3", fontWeight: 600, flexShrink: 0 }}>{disc} In Discussion</span>}
+            {held  > 0 && <span style={{ fontSize: "0.75rem", color: "#6c28d9", fontWeight: 600, flexShrink: 0 }}>{held} Held</span>}
             <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }} />
-            <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.45)", fontStyle: "italic" }}>On Request</span>
+            <span style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.45)", fontStyle: "italic", flexShrink: 0 }}>Pricing on request</span>
           </div>
         );
       })()}

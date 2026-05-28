@@ -8,10 +8,13 @@ import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-const links = [
+const publicLinks = [
   { label: "Projects", href: "/projects" },
   { label: "Search", href: "/search" },
   { label: "EMI Calc", href: "/emi-calculator" },
+];
+
+const adminLinks = [
   { label: "Admin", href: "/admin" },
 ];
 
@@ -80,7 +83,7 @@ export default function Navbar() {
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-1">
-            {links.map((l) => {
+            {[...publicLinks, ...(user ? adminLinks : [])].map((l) => {
               const active = pathname === l.href || pathname.startsWith(l.href + "/");
               return (
                 <Link
@@ -180,7 +183,7 @@ export default function Navbar() {
               </span>
             )}
           </Link>
-          {links.map((l) => (
+          {[...publicLinks, ...(user ? adminLinks : [])].map((l) => (
             <Link
               key={l.label}
               href={l.href}

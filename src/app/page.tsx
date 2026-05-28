@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import FlatFinder from "@/components/home/FlatFinder";
 import RecentProjects from "@/components/home/RecentProjects";
 import { getProjects } from "@/lib/data";
-import { getProjectStats } from "@/lib/types";
+import { getProjectStats, FLAT_TYPE_LABELS } from "@/lib/types";
 import {
   MapPin, ChevronRight, Building2, Check,
   Box, Compass, Layers,
@@ -58,6 +58,10 @@ export default async function HomePage() {
   const allProjects = await getProjects();
   const featuredProjects = allProjects.slice(0, 3);
   const demoProject = allProjects[0];
+
+  const allFlats = allProjects.flatMap(p => p.towers.flatMap(t => t.flats));
+  const totalAvailable = allFlats.filter(f => f.status === "available").length;
+  const totalProjects = allProjects.length;
 
   return (
     <div className="min-h-screen" style={{ background: "#000" }}>
@@ -125,6 +129,25 @@ export default async function HomePage() {
                   </div>
                 ))}
               </div>
+
+              {/* Live stats pills */}
+              {totalAvailable > 0 && (
+                <div className="flex items-center gap-2 mt-4 flex-wrap">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                    style={{ background: "rgba(28,199,127,0.12)", border: "1px solid rgba(28,199,127,0.25)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#1cc77f" }} />
+                    <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1cc77f" }}>
+                      {totalAvailable} flats available now
+                    </span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                    <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>
+                      across {totalProjects} project{totalProjects !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right — 3D preview (desktop) */}
@@ -211,6 +234,11 @@ export default async function HomePage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {featuredProjects.map((project) => {
                 const s = getProjectStats(project);
+                const bhkChips = Array.from(new Set(
+                  project.towers.flatMap(t => t.flats)
+                    .filter(f => f.status === "available")
+                    .map(f => f.flat_type)
+                )).slice(0, 4);
                 return (
                   <Link
                     key={project.id}
@@ -218,6 +246,7 @@ export default async function HomePage() {
                     className="group block rounded-2xl overflow-hidden project-card-hover"
                     style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04)", textDecoration: "none" }}
                   >
+                    {/* Cover */}
                     <div className="relative h-48 overflow-hidden" style={{ background: "#f0f0f2" }}>
                       {project.cover_image_url ? (
                         <Image
@@ -233,6 +262,18 @@ export default async function HomePage() {
                         </div>
                       )}
                       <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent 55%)" }} />
+                      {/* Status pill */}
+                      {project.status && (
+                        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full"
+                          style={{
+                            background: project.status === "completed" ? "#059669" : "rgba(0,0,0,0.52)",
+                            backdropFilter: "blur(10px)",
+                            color: "#fff",
+                            fontSize: "0.68rem", fontWeight: 600,
+                          }}>
+                          {project.status === "completed" ? "Ready to Move" : project.status === "active" ? "Under Construction" : "Upcoming"}
+                        </div>
+                      )}
                       <div className="absolute bottom-3 left-3 right-3">
                         <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
                           {project.name}
@@ -243,15 +284,41 @@ export default async function HomePage() {
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 flex items-center justify-between">
-                      <div>
-                        <div style={{ fontSize: "0.68rem", color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pricing</div>
-                        <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
+                    {/* Card body */}
+                    <div className="p-4">
+                      {/* Construction progress */}
+                      {project.construction_percentage != null && project.status !== "completed" && (
+                        <div className="mb-3">
+                          <div className="flex justify-between mb-1" style={{ fontSize: "0.68rem", color: "rgba(0,0,0,0.4)" }}>
+                            <span>{project.construction_stage ?? "In progress"}</span>
+                            <span style={{ fontWeight: 600, color: "#d97706" }}>{project.construction_percentage}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.07)" }}>
+                            <div className="h-full rounded-full" style={{ width: `${project.construction_percentage}%`, background: "linear-gradient(90deg,#f59e0b,#d97706)" }} />
+                          </div>
+                        </div>
+                      )}
+                      {/* Availability + BHK chips */}
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full" style={{ background: s.available > 0 ? "#34c759" : "#ff3b30" }} />
+                          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: s.available > 0 ? "#1a7f4a" : "#d70015" }}>
+                            {s.available > 0 ? `${s.available} Available` : "Sold Out"}
+                          </span>
+                          {s.sold > 0 && <span style={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.35)" }}>· {s.sold} sold</span>}
+                        </div>
+                        <div style={{ fontSize: "1rem", fontWeight: 700, color: "#0071e3" }}>On Request</div>
                       </div>
-                      <div className="text-right">
-                        <div style={{ fontSize: "1rem", fontWeight: 700, color: "#059669" }}>{s.available}</div>
-                        <div style={{ fontSize: "0.7rem", color: "rgba(0,0,0,0.4)" }}>available</div>
-                      </div>
+                      {bhkChips.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {bhkChips.map(type => (
+                            <span key={type} className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                              style={{ background: "rgba(0,113,227,0.07)", color: "#0071e3", border: "1px solid rgba(0,113,227,0.15)" }}>
+                              {FLAT_TYPE_LABELS[type] ?? type}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 );
