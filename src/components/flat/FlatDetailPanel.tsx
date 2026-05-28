@@ -16,6 +16,7 @@ interface Props {
   isInCompare?: boolean;
   onToggleCompare?: () => void;
   onOpenTour?: () => void;
+  onFindSimilar?: (flatType: string) => void;
 }
 
 function calcEMI(principal: number, annualRate: number, tenureYears: number) {
@@ -49,7 +50,7 @@ function toggleWishlistItem(id: string): boolean {
   }
 }
 
-export default function FlatDetailPanel({ flat, projectName, projectId, onClose, isInCompare, onToggleCompare, onOpenTour }: Props) {
+export default function FlatDetailPanel({ flat, projectName, projectId, onClose, isInCompare, onToggleCompare, onOpenTour, onFindSimilar }: Props) {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [showEmi, setShowEmi] = useState(false);
@@ -288,12 +289,23 @@ export default function FlatDetailPanel({ flat, projectName, projectId, onClose,
             Schedule a Visit
           </button>
         ) : (
-          <div
-            className="w-full py-3 rounded-xl text-center"
-            style={{ background: "#fafafa", color: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,0,0,0.07)", fontSize: "0.8125rem" }}
-          >
-            This flat is <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{flat.status}</span> — WhatsApp us for alternatives
-          </div>
+          <>
+            <div
+              className="w-full py-3 rounded-xl text-center"
+              style={{ background: "#fafafa", color: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,0,0,0.07)", fontSize: "0.8125rem" }}
+            >
+              This flat is <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{flat.status}</span>
+            </div>
+            {onFindSimilar && (
+              <button
+                onClick={() => { onClose(); onFindSimilar(flat.flat_type); }}
+                className="w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                style={{ background: "rgba(0,113,227,0.08)", color: "#0055b3", border: "1.5px solid rgba(0,113,227,0.18)", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}
+              >
+                Find available {FLAT_TYPE_LABELS[flat.flat_type]} →
+              </button>
+            )}
+          </>
         )}
       </div>
 

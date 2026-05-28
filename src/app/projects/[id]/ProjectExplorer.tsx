@@ -79,6 +79,7 @@ export default function ProjectExplorer({ project }: Props) {
   const [showAvailOnly, setShowAvailOnly] = useState(true);
   const [flatSort, setFlatSort] = useState<"default" | "area_desc" | "area_asc" | "floor_desc">("default");
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ flatId: string; flatNumber: string; flatType: string; floor: number }>>([]);
+  const [heroIdx, setHeroIdx] = useState(0);
   const sheetTouchY = useRef(0);
 
   // Track recently viewed flat
@@ -189,6 +190,23 @@ export default function ProjectExplorer({ project }: Props) {
     return flats;
   }, [activeTower, filters, currentFloor, showAvailOnly, flatSort]);
   const totalFloors  = activeTower?.total_floors ?? project.total_floors ?? 24;
+
+  // Keyboard arrow-key floor navigation when in floor view
+  useEffect(() => {
+    if (view !== "floor") return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedFloor(f => Math.min((f ?? currentFloor) + 1, totalFloors));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedFloor(f => Math.max((f ?? currentFloor) - 1, 1));
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, currentFloor, totalFloors]);
 
   // Best Value: available flat with lowest price_per_sqft (or highest area as fallback)
   const bestValueId = useMemo(() => {
@@ -379,7 +397,7 @@ export default function ProjectExplorer({ project }: Props) {
 
           {/* ═══ VISUAL RENDER VIEW ════════════════════════════════════ */}
           {view === "visual" && (() => {
-            const heroImage = project.cover_image_url ?? "/images/building_render.jpg";
+            const fallbackImage = project.cover_image_url ?? "/images/building_render.jpg";
             // Build gallery from milestones that have photo_urls
             const milestonePhotos = project.construction_milestones
               .flatMap(m => m.photo_urls ?? [])
@@ -389,12 +407,13 @@ export default function ProjectExplorer({ project }: Props) {
               ...milestonePhotos,
             ].filter(Boolean).slice(0, 6);
             if (photoGallery.length === 0) photoGallery.push("/images/building_render.jpg");
+            const activeHeroSrc = photoGallery[heroIdx] ?? fallbackImage;
             return (
               <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: "#0a0f1a" }}>
                 {/* Main hero image */}
                 <div className="relative flex-1 overflow-hidden">
                   <Image
-                    src={heroImage}
+                    src={activeHeroSrc}
                     alt={`${project.name} architectural visualization`}
                     fill
                     className="object-cover"
@@ -436,14 +455,21 @@ export default function ProjectExplorer({ project }: Props) {
                     </div>
                   </div>
                 </div>
-                {/* Thumbnail strip — only shows if multiple photos */}
+                {/* Thumbnail strip — clickable to switch main image */}
                 {photoGallery.length > 1 && (
                   <div className="shrink-0 flex gap-2 px-4 py-3 overflow-x-auto" style={{ background: "#0a0f1a", scrollbarWidth: "none" }}>
                     {photoGallery.map((url, i) => (
-                      <div key={i} className="relative shrink-0 rounded-xl overflow-hidden" style={{ width: 80, height: 56 }}>
+                      <button key={i} onClick={() => setHeroIdx(i)}
+                        className="relative shrink-0 rounded-xl overflow-hidden transition-all"
+                        style={{
+                          width: 80, height: 56, padding: 0, background: "none", cursor: "pointer",
+                          border: `2px solid ${i === heroIdx ? "#0071e3" : "transparent"}`,
+                          borderRadius: 10,
+                          opacity: i === heroIdx ? 1 : 0.6,
+                        }}>
                         <Image src={url} alt={`${project.name} photo ${i + 1}`} fill className="object-cover"
                           sizes="80px" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1167,7 +1193,12 @@ export default function ProjectExplorer({ project }: Props) {
               onClose={() => setSelectedFlat(null)}
               isInCompare={compareList.some(f=>f.id===selectedFlat.id)}
               onToggleCompare={() => toggleCompare(selectedFlat)}
-              onOpenTour={() => setTourFlat(selectedFlat)}/>
+              onOpenTour={() => setTourFlat(selectedFlat)}
+              onFindSimilar={(flatType) => {
+                setSelectedFlat(null);
+                setFilters(prev => ({ ...prev, flatType: [flatType as import("@/lib/types").FlatType] }));
+                setView("floor");
+              }}/>
           </aside>
         )}
       </div>
@@ -1202,7 +1233,12 @@ export default function ProjectExplorer({ project }: Props) {
                 onClose={() => setSelectedFlat(null)}
                 isInCompare={compareList.some(f=>f.id===selectedFlat.id)}
                 onToggleCompare={() => toggleCompare(selectedFlat)}
-                onOpenTour={() => setTourFlat(selectedFlat)}/>
+                onOpenTour={() => setTourFlat(selectedFlat)}
+                onFindSimilar={(flatType) => {
+                  setSelectedFlat(null);
+                  setFilters(prev => ({ ...prev, flatType: [flatType as import("@/lib/types").FlatType] }));
+                  setView("floor");
+                }}/>
             </div>
           </div>
         </div>
