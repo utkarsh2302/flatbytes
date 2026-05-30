@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Phone, ArrowRight, ChevronLeft } from "lucide-react";
+import { Phone, Mail, ArrowRight, ChevronLeft } from "lucide-react";
 
 type BuyerStep = "phone" | "otp";
+type LoginMode = "phone" | "email";
 
 export default function LoginForm() {
   const router = useRouter();

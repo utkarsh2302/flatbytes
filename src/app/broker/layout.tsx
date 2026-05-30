@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, Calculator, Share2, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Building2, Users, TrendingUp, Megaphone, Camera, BookOpen, UserCheck, ChevronLeft } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", href: "/broker", icon: LayoutDashboard, exact: true },
-  { label: "Live Inventory", href: "/broker/inventory", icon: Building2 },
-  { label: "My Leads", href: "/broker/leads", icon: Users },
-  { label: "Commission Calc", href: "/broker/calculator", icon: Calculator },
-  { label: "Marketing Kit", href: "/broker/marketing", icon: Share2 },
+  { label: "Dashboard",   href: "/broker",           icon: LayoutDashboard, exact: true },
+  { label: "Lead Inbox",  href: "/broker/leads",     icon: Users },
+  { label: "Log Visit",   href: "/broker/log-visit",  icon: Camera },
+  { label: "Book a Flat", href: "/broker/book-flat",  icon: BookOpen },
+  { label: "My Clients",  href: "/broker/clients",    icon: UserCheck },
+  { label: "Inventory",   href: "/broker/inventory",  icon: Building2 },
+  { label: "Marketing",   href: "/broker/marketing",  icon: Megaphone },
+  { label: "Earnings",    href: "/broker/earnings",   icon: TrendingUp },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {

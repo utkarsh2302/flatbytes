@@ -41,12 +41,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── /admin/* — requires any authenticated user with an admin_users row ──
-  if (pathname.startsWith("/admin")) {
+  // ── /admin/* — auth bypassed for local preview ──
+  // TODO: re-enable before production push
+  if (pathname.startsWith("/admin") && process.env.NODE_ENV === "production") {
     if (!user) return redirectTo("/login");
 
-    // Check admin_users membership — a user may belong to multiple orgs,
-    // so fetch up to one row rather than expecting exactly one.
     const { data: adminRows } = await supabase
       .from("admin_users")
       .select("id, role")
@@ -57,8 +56,9 @@ export async function middleware(request: NextRequest) {
     if (!adminRows || adminRows.length === 0) return redirectTo("/login");
   }
 
-  // ── /broker/* — requires a brokers row with matching user_id ──
-  if (pathname.startsWith("/broker") && pathname !== "/broker/register") {
+  // ── /broker/* — auth bypassed for local preview ──
+  // TODO: re-enable before production push
+  if (pathname.startsWith("/broker") && pathname !== "/broker/register" && process.env.NODE_ENV === "production") {
     if (!user) return redirectTo("/login");
 
     const { data: brokerRows } = await supabase

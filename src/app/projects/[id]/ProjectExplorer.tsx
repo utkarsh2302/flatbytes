@@ -12,6 +12,7 @@ const VirtualTourModal = dynamic(() => import("@/components/flat/VirtualTourModa
 import ConstructionTracker from "@/components/tower/ConstructionTracker";
 import AmenitiesShowcase from "@/components/tower/AmenitiesShowcase";
 import GallerySection, { buildGallery } from "@/components/tower/GallerySection";
+const SiteVisitModal = dynamic(() => import("@/components/buyer/SiteVisitModal"), { ssr: false });
 import StatusBadge from "@/components/ui/StatusBadge";
 import UrgencyToast from "@/components/buyer/UrgencyToast";
 import ShareButton from "@/components/buyer/ShareButton";
@@ -166,6 +167,7 @@ export default function ProjectExplorer({ project }: Props) {
   const [showAvailOnly, setShowAvailOnly] = useState(true);
   const [flatSort, setFlatSort] = useState<"default" | "area_desc" | "area_asc" | "floor_desc">("default");
   const [isNight, setIsNight] = useState(false);
+  const [showVisitModal, setShowVisitModal] = useState(false);
 
   const isLumaEmbed = !!(project.model_3d_url?.includes("lumalabs.ai"));
 
@@ -580,6 +582,12 @@ export default function ProjectExplorer({ project }: Props) {
                           style={{ background: project.model_3d_url ? "rgba(255,255,255,0.1)" : "#0071e3", backdropFilter: "blur(8px)", color: "#fff", border: project.model_3d_url ? "1px solid rgba(255,255,255,0.2)" : "none", cursor: "pointer" }}>
                           <Layers className="w-4 h-4"/>
                           Browse Units
+                        </button>
+                        <button onClick={() => setShowVisitModal(true)}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all"
+                          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
+                          <Calendar className="w-4 h-4"/>
+                          Book a Visit
                         </button>
                       </div>
                     </div>
@@ -1406,6 +1414,15 @@ export default function ProjectExplorer({ project }: Props) {
 
       {tourFlat && (
         <VirtualTourModal flat={tourFlat} onClose={() => setTourFlat(null)}/>
+      )}
+
+      {showVisitModal && (
+        <SiteVisitModal
+          projectId={project.id}
+          projectName={project.name}
+          orgId={project.org_id}
+          onClose={() => setShowVisitModal(false)}
+        />
       )}
 
       {/* Floating WhatsApp FAB — mobile only, left side, hidden when flat detail sheet is open */}

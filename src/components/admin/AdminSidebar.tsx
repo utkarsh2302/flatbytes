@@ -5,19 +5,22 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BarChart3, Users, FileText, CreditCard,
   Briefcase, Boxes, ChevronLeft, CalendarCheck, MessageCircle, Sparkles,
+  TrendingUp, Map,
 } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { label: "Inventory", href: "/admin/inventory", icon: Boxes },
-  { label: "Leads & CRM", href: "/admin/leads", icon: Users },
-  { label: "Site Visits", href: "/admin/visits", icon: CalendarCheck },
-  { label: "Bookings", href: "/admin/bookings", icon: FileText },
-  { label: "Payments", href: "/admin/payments", icon: CreditCard },
-  { label: "Brokers", href: "/admin/brokers", icon: Briefcase },
-  { label: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle },
+  { label: "Dashboard",   href: "/admin",             icon: LayoutDashboard, exact: true },
+  { label: "Revenue",     href: "/admin/revenue",     icon: TrendingUp },
+  { label: "Heatmap",     href: "/admin/heatmap",     icon: Map },
+  { label: "Analytics",   href: "/admin/analytics",   icon: BarChart3 },
+  { label: "Inventory",   href: "/admin/inventory",   icon: Boxes },
+  { label: "Leads & CRM", href: "/admin/leads",       icon: Users },
+  { label: "Site Visits", href: "/admin/visits",      icon: CalendarCheck },
+  { label: "Bookings",    href: "/admin/bookings",    icon: FileText },
+  { label: "Payments",    href: "/admin/payments",    icon: CreditCard },
+  { label: "Brokers",     href: "/admin/brokers",     icon: Briefcase },
+  { label: "WhatsApp",    href: "/admin/whatsapp",    icon: MessageCircle },
   { label: "AI Insights", href: "/admin/ai-insights", icon: Sparkles },
 ];
 

@@ -62,6 +62,62 @@ export interface BrokerInventoryFlat {
   bathrooms: number | null;
 }
 
+/** Resolves a broker profile for a page — uses first DB broker in dev when no session */
+export async function resolveBrokerProfile(userId: string | null): Promise<BrokerProfile | null> {
+  if (userId) return getBrokerProfile(userId);
+  if (process.env.NODE_ENV !== "production") return getFirstBrokerForPreview();
+  return null;
+}
+
+/** Dev-only: returns the first broker (any status) for local preview without login */
+export async function getFirstBrokerForPreview(): Promise<BrokerProfile> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("brokers")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+
+  // If no broker in DB at all, return a mock profile so pages render
+  if (!data) {
+    return {
+      id: "preview-broker",
+      name: "Preview Broker",
+      phone: "9999999999",
+      email: "preview@flatbytes.in",
+      rera_id: null,
+      commission_pct: 2,
+      tier: "free",
+      is_active: true,
+      org_id: "preview-org",
+      bio: null,
+      total_clicks: 0,
+      total_conversions: 0,
+      total_sales: 0,
+      total_commission: 0,
+      user_id: null,
+    };
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    rera_id: data.rera_id,
+    commission_pct: data.commission_pct ?? 2,
+    tier: data.tier ?? "free",
+    is_active: data.is_active ?? true,
+    org_id: data.org_id,
+    bio: data.bio,
+    total_clicks: data.total_clicks ?? 0,
+    total_conversions: data.total_conversions ?? 0,
+    total_sales: data.total_sales ?? 0,
+    total_commission: data.total_commission ?? 0,
+    user_id: data.user_id,
+  };
+}
+
 export async function getBrokerProfile(userId: string): Promise<BrokerProfile | null> {
   const supabase = createClient();
   const { data } = await supabase

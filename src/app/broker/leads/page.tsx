@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getBrokerProfile, getBrokerLeads, getActivitiesForLead } from "@/lib/broker";
+import { getBrokerProfile, getBrokerLeads, getActivitiesForLead, resolveBrokerProfile } from "@/lib/broker";
 import { redirect } from "next/navigation";
 import { inrShort } from "@/lib/format";
 import BrokerLeadsClient from "./BrokerLeadsClient";
@@ -11,9 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function BrokerLeadsPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/broker/leads");
-
-  const profile = await getBrokerProfile(user.id);
+  if (!user && process.env.NODE_ENV === "production") redirect("/login?next=/broker/leads");
+  const profile = await resolveBrokerProfile(user?.id ?? null);
   if (!profile) redirect("/broker/register");
 
   const leads = await getBrokerLeads(profile.id);
