@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { inrShort } from "@/lib/format";
+import { DEMO_OPEN_ACCESS } from "@/lib/demo";
 
 export type ActivityType = 'call' | 'whatsapp' | 'site_visit' | 'note' | 'stage_change'
 
@@ -65,11 +66,11 @@ export interface BrokerInventoryFlat {
 /** Resolves a broker profile for a page — uses first DB broker in dev when no session */
 export async function resolveBrokerProfile(userId: string | null): Promise<BrokerProfile | null> {
   if (userId) return getBrokerProfile(userId);
-  if (process.env.NODE_ENV !== "production") return getFirstBrokerForPreview();
+  if (DEMO_OPEN_ACCESS) return getFirstBrokerForPreview();
   return null;
 }
 
-/** Dev-only: returns the first broker (any status) for local preview without login */
+/** Returns the first broker (any status) for demo/preview without login — see DEMO_OPEN_ACCESS */
 export async function getFirstBrokerForPreview(): Promise<BrokerProfile> {
   const supabase = createClient();
   const { data } = await supabase

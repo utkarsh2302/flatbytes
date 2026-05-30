@@ -239,6 +239,13 @@ export default function LoginForm() {
           <a href="#" style={{ color: "#0071e3" }}>Terms</a> and{" "}
           <a href="#" style={{ color: "#0071e3" }}>Privacy Policy</a>.
         </p>
+
+        {/* Discreet partner / staff portal access */}
+        <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", marginTop: 18, paddingTop: 14, textAlign: "center" }}>
+          <Link href="/broker" style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", textDecoration: "none" }}>
+            Broker or partner? <span style={{ color: "#0071e3", fontWeight: 500 }}>Open the portal →</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

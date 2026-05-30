@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { resolveBrokerProfile } from "@/lib/broker";
+import { DEMO_OPEN_ACCESS } from "@/lib/demo";
 import { redirect } from "next/navigation";
 import BrokerMarketingClient from "./BrokerMarketingClient";
 import { getProjectsForAdmin } from "@/lib/data";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function BrokerMarketingPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user && process.env.NODE_ENV === "production") redirect("/login?next=/broker/marketing");
+  if (!user && !DEMO_OPEN_ACCESS) redirect("/login?next=/broker/marketing");
   const profile = await resolveBrokerProfile(user?.id ?? null);
   if (!profile) redirect("/broker/register");
 

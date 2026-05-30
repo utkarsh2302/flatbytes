@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { DEMO_OPEN_ACCESS } from "@/lib/demo";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -41,9 +42,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── /admin/* — auth bypassed for local preview ──
-  // TODO: re-enable before production push
-  if (pathname.startsWith("/admin") && process.env.NODE_ENV === "production") {
+  // ── /admin/* — auth enforced unless DEMO_OPEN_ACCESS is on ──
+  // Set DEMO_OPEN_ACCESS=false to require admin login (see src/lib/demo.ts).
+  if (pathname.startsWith("/admin") && !DEMO_OPEN_ACCESS) {
     if (!user) return redirectTo("/login");
 
     const { data: adminRows } = await supabase
@@ -56,9 +57,9 @@ export async function middleware(request: NextRequest) {
     if (!adminRows || adminRows.length === 0) return redirectTo("/login");
   }
 
-  // ── /broker/* — auth bypassed for local preview ──
-  // TODO: re-enable before production push
-  if (pathname.startsWith("/broker") && pathname !== "/broker/register" && process.env.NODE_ENV === "production") {
+  // ── /broker/* — auth enforced unless DEMO_OPEN_ACCESS is on ──
+  // Set DEMO_OPEN_ACCESS=false to require broker login (see src/lib/demo.ts).
+  if (pathname.startsWith("/broker") && pathname !== "/broker/register" && !DEMO_OPEN_ACCESS) {
     if (!user) return redirectTo("/login");
 
     const { data: brokerRows } = await supabase
