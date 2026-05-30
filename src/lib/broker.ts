@@ -1,6 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { inrShort } from "@/lib/format";
 
+export type ActivityType = 'call' | 'whatsapp' | 'site_visit' | 'note' | 'stage_change'
+
+export interface BrokerActivity {
+  id: string
+  assignmentId: string | null
+  leadId: string
+  brokerId: string
+  type: ActivityType
+  note: string
+  createdAt: string
+}
+
 export interface BrokerProfile {
   id: string;
   name: string;
@@ -20,7 +32,8 @@ export interface BrokerProfile {
 }
 
 export interface BrokerLead {
-  id: string;
+  id: string;            // lead ID
+  assignmentId: string;  // broker_assignments.id
   name: string;
   phone: string;
   status: string;
@@ -93,6 +106,7 @@ export async function getBrokerLeads(brokerId: string): Promise<BrokerLead[]> {
 
   return (data ?? []).map((row: any) => ({
     id: row.leads?.id ?? row.id,
+    assignmentId: row.id,
     name: row.leads?.name ?? "—",
     phone: row.leads?.phone ?? "—",
     status: row.leads?.status ?? "new",
@@ -152,4 +166,70 @@ export async function getBrokerStats(brokerId: string) {
   const grossBookingValue = bookings.reduce((s, b) => s + Number(b.agreement_value), 0);
 
   return { activeLeads, wonLeads, totalCommissionEarned, grossBookingValue };
+}
+
+// ── Activity timeline ─────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any
+
+export async function getActivitiesForLead(leadId: string): Promise<BrokerActivity[]> {
+  const supabase = createClient() as AnyClient;
+  const { data } = await supabase
+    .from("broker_activities")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false });
+  return ((data ?? []) as Record<string, string>[]).map((r) => ({
+    id: r.id,
+    assignmentId: r.assignment_id ?? null,
+    leadId: r.lead_id,
+    brokerId: r.broker_id,
+    type: r.type as ActivityType,
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function addBrokerActivity(params: {
+  assignmentId?: string;
+  leadId: string;
+  brokerId: string;
+  orgId: string;
+  type: ActivityType;
+  note: string;
+}): Promise<BrokerActivity | null> {
+  const supabase = createClient() as AnyClient;
+  const { data, error } = await supabase
+    .from("broker_activities")
+    .insert({
+      assignment_id: params.assignmentId ?? null,
+      lead_id: params.leadId,
+      broker_id: params.brokerId,
+      org_id: params.orgId,
+      type: params.type,
+      note: params.note,
+    })
+    .select()
+    .single();
+  if (error || !data) return null;
+  const r = data as Record<string, string>;
+  return {
+    id: r.id,
+    assignmentId: r.assignment_id ?? null,
+    leadId: r.lead_id,
+    brokerId: r.broker_id,
+    type: r.type as ActivityType,
+    note: r.note,
+    createdAt: r.created_at,
+  };
+}
+
+export async function updateLeadStage(assignmentId: string, stage: string): Promise<boolean> {
+  const supabase = createClient() as AnyClient;
+  const { error } = await supabase
+    .from("broker_assignments")
+    .update({ status: stage, last_activity_at: new Date().toISOString() })
+    .eq("id", assignmentId);
+  return !error;
 }

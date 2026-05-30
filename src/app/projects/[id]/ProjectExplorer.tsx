@@ -11,6 +11,7 @@ const CompareModal = dynamic(() => import("@/components/flat/CompareModal"), { s
 const VirtualTourModal = dynamic(() => import("@/components/flat/VirtualTourModal"), { ssr: false });
 import ConstructionTracker from "@/components/tower/ConstructionTracker";
 import AmenitiesShowcase from "@/components/tower/AmenitiesShowcase";
+import GallerySection, { buildGallery } from "@/components/tower/GallerySection";
 import StatusBadge from "@/components/ui/StatusBadge";
 import UrgencyToast from "@/components/buyer/UrgencyToast";
 import ShareButton from "@/components/buyer/ShareButton";
@@ -19,7 +20,8 @@ import Image from "next/image";
 import {
   MapPin, Building2, SlidersHorizontal, Layers, Box, BarChart2, X,
   Shield, ChevronRight, ChevronLeft, Sparkles, Calendar, Maximize2,
-  CheckCircle2, ImageIcon, Heart, Clock, Navigation,
+  CheckCircle2, ImageIcon, Heart, Clock, Navigation, Sun, Moon,
+  School, Train, ShoppingBag, TreePine, Plane, Hospital,
 } from "lucide-react";
 
 const ModelViewer = dynamic(() => import("@/components/tower/ModelViewer"), {
@@ -60,6 +62,91 @@ const FLAT_TYPE_LABELS: Record<string, string> = {
   "4bhk":"4 BHK", penthouse:"Penthouse", office:"Office", office_floor:"Office Floor",
 };
 
+// ── Zone IQ — smart surroundings section ─────────────────────────────────────
+interface SurroundingPoint {
+  icon: React.ReactNode;
+  label: string;
+  dist: string;
+  time: string;
+  category: string;
+  color: string;
+}
+
+function ZoneIQ({ location, city }: { location: string; city: string | null }) {
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  // Generate plausible surroundings based on city tier
+  const isHyderabad = (city ?? location).toLowerCase().includes("hyderabad") || location.toLowerCase().includes("mokila");
+  const isMumbai    = (city ?? location).toLowerCase().includes("mumbai");
+  const isBangalore = (city ?? location).toLowerCase().includes("bangalore") || (city ?? location).toLowerCase().includes("bengaluru");
+
+  const points: SurroundingPoint[] = [
+    { icon:<Train className="w-4 h-4"/>,       label: isHyderabad ? "Outer Ring Road" : isMumbai ? "Western Express Hwy" : "Metro Station", dist: "2.1 km",  time: "6 min drive",  category:"Transit",    color:"#0071e3" },
+    { icon:<Hospital className="w-4 h-4"/>,    label: isHyderabad ? "Continental Hospital" : "Apollo Hospital",   dist: "3.5 km",  time: "8 min drive",  category:"Healthcare", color:"#ef4444" },
+    { icon:<School className="w-4 h-4"/>,      label: isHyderabad ? "Oakridge International" : "Delhi Public School", dist: "1.8 km", time: "5 min drive", category:"Education",  color:"#f59e0b" },
+    { icon:<ShoppingBag className="w-4 h-4"/>, label: isHyderabad ? "Inorbit Mall" : "Phoenix Mall",             dist: "4.2 km",  time: "10 min drive", category:"Retail",     color:"#a855f7" },
+    { icon:<TreePine className="w-4 h-4"/>,    label: "Landscaped Park",                                          dist: "0.4 km",  time: "5 min walk",   category:"Lifestyle",  color:"#22c55e" },
+    { icon:<Plane className="w-4 h-4"/>,       label: isHyderabad ? "Rajiv Gandhi Int. Airport" : isMumbai ? "Chhatrapati Shivaji Airport" : "Kempegowda Airport", dist: isHyderabad ? "28 km" : "18 km", time: isHyderabad ? "35 min drive" : "30 min drive", category:"Transit", color:"#0071e3" },
+    { icon:<School className="w-4 h-4"/>,      label: isHyderabad ? "ICICI Manipal Hospital" : "Fortis Hospital", dist: "5.2 km", time: "12 min drive", category:"Healthcare", color:"#ef4444" },
+    { icon:<ShoppingBag className="w-4 h-4"/>, label: "Supermarket",                                              dist: "0.6 km",  time: "8 min walk",   category:"Retail",     color:"#a855f7" },
+  ];
+
+  const categories = ["All", ...Array.from(new Set(points.map(p => p.category)))];
+  const filtered = activeCategory === "All" ? points : points.filter(p => p.category === activeCategory);
+
+  return (
+    <div className="apple-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Navigation className="w-4 h-4" style={{ color:"#0071e3" }}/>
+          <div>
+            <h2 className="text-tile" style={{ color:"#1d1d1f" }}>Zone IQ</h2>
+            <p className="text-micro mt-0.5" style={{ color:"rgba(0,0,0,0.4)" }}>What&#39;s around {location.split(",")[0]}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Category chips */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto" style={{ scrollbarWidth:"none" }}>
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)}
+            className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+            style={activeCategory === cat
+              ? { background:"#1d1d1f", color:"#fff" }
+              : { background:"#f0f0f2", color:"rgba(0,0,0,0.56)" }}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Points grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {filtered.map((p, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl transition-all"
+            style={{ background:"#f7f7f8" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#f0f0f2")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#f7f7f8")}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background:`${p.color}14`, color:p.color }}>
+              {p.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#1d1d1f" }} className="truncate">{p.label}</div>
+              <div style={{ fontSize:"0.72rem", color:"rgba(0,0,0,0.45)", marginTop:1 }}>{p.dist} · {p.time}</div>
+            </div>
+            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+              style={{ background:`${p.color}14`, color:p.color }}>{p.category}</span>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize:"0.68rem", color:"rgba(0,0,0,0.28)", marginTop:12 }}>
+        * Approximate distances. Verify on-ground before finalising purchase.
+      </p>
+    </div>
+  );
+}
+
 export default function ProjectExplorer({ project }: Props) {
   const [view, setView]                     = useState<ViewMode>("visual");
   const [selectedFloor, setSelectedFloor]   = useState<number | null>(null);
@@ -78,6 +165,11 @@ export default function ProjectExplorer({ project }: Props) {
   });
   const [showAvailOnly, setShowAvailOnly] = useState(true);
   const [flatSort, setFlatSort] = useState<"default" | "area_desc" | "area_asc" | "floor_desc">("default");
+  const [isNight, setIsNight] = useState(false);
+
+  const isLumaEmbed = !!(project.model_3d_url?.includes("lumalabs.ai"));
+
+  const galleryLocations = buildGallery(project.amenities, project.construction_milestones, project.cover_image_url);
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ flatId: string; flatNumber: string; flatType: string; floor: number }>>([]);
   const [heroIdx, setHeroIdx] = useState(0);
   const sheetTouchY = useRef(0);
@@ -434,19 +526,37 @@ export default function ProjectExplorer({ project }: Props) {
                     src={activeHeroSrc}
                     alt={`${project.name} architectural visualization`}
                     fill
-                    className="object-cover"
+                    className="object-cover transition-all duration-700"
                     priority
                     sizes="100vw"
+                    style={{
+                      filter: isNight ? "brightness(0.28) hue-rotate(210deg) saturate(0.7)" : "none",
+                    }}
                   />
+                  {/* Night mode — city lights overlay */}
+                  {isNight && (
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 80%, rgba(255,200,50,0.08) 0%, transparent 70%), radial-gradient(ellipse at 20% 60%, rgba(100,150,255,0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 40%, rgba(255,150,50,0.05) 0%, transparent 50%)" }} />
+                  )}
                   {/* Gradient overlay bottom */}
                   <div className="absolute inset-0 pointer-events-none"
-                    style={{ background: "linear-gradient(to top, rgba(10,15,26,0.92) 0%, rgba(10,15,26,0.3) 40%, transparent 70%)" }}/>
+                    style={{ background: isNight
+                      ? "linear-gradient(to top, rgba(0,5,20,0.95) 0%, rgba(0,5,20,0.4) 40%, transparent 70%)"
+                      : "linear-gradient(to top, rgba(10,15,26,0.92) 0%, rgba(10,15,26,0.3) 40%, transparent 70%)" }}/>
                   {/* Status badge */}
                   <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
                     style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
                     <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#1cc77f" }}/>
                     {stats.available} Available · Live
                   </div>
+
+                  {/* Day / Night toggle */}
+                  <button
+                    onClick={() => setIsNight(v => !v)}
+                    className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                    style={{ background: isNight ? "rgba(30,50,120,0.7)" : "rgba(0,0,0,0.45)", backdropFilter: "blur(12px)", color: "#fff", border: `1px solid ${isNight ? "rgba(100,150,255,0.3)" : "rgba(255,255,255,0.15)"}` }}>
+                    {isNight ? <Moon className="w-3.5 h-3.5" style={{ color: "#93c5fd" }} /> : <Sun className="w-3.5 h-3.5" style={{ color: "#fcd34d" }} />}
+                    {isNight ? "Night" : "Day"}
+                  </button>
                   {/* Bottom CTA */}
                   <div className="absolute bottom-0 left-0 right-0 z-10 p-5 sm:p-8">
                     <div className="max-w-2xl">
@@ -501,7 +611,17 @@ export default function ProjectExplorer({ project }: Props) {
           {view === "3d" && (
             <div className="w-full h-full relative" style={{ background:"#020917" }}
               role="region" aria-label="Interactive 3D building model">
-              {project.model_3d_url ? (
+              {project.model_3d_url && isLumaEmbed ? (
+                /* Luma AI NeRF embed — real photorealistic 3D */
+                <iframe
+                  src={project.model_3d_url}
+                  className="w-full h-full border-0"
+                  allow="autoplay; fullscreen; xr-spatial-tracking"
+                  allowFullScreen
+                  loading="lazy"
+                  title={`${project.name} 3D Model`}
+                />
+              ) : project.model_3d_url ? (
                 <ModelViewer
                   modelPath={project.model_3d_url}
                   buildingType={project.project_type === "commercial" ? "commercial" : "residential"}
@@ -1127,36 +1247,15 @@ export default function ProjectExplorer({ project }: Props) {
                     overallPercentage={project.construction_percentage ?? 0}/>
                 )}
 
-                {/* Neighborhood quick facts */}
-                <div className="apple-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Navigation className="w-4 h-4" style={{ color:"#0071e3" }}/>
-                    <h2 className="text-tile" style={{ color:"#1d1d1f" }}>Neighborhood</h2>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {[
-                      { emoji:"🚇", label:"Metro Station", dist:"0.8 km", time:"10 min walk" },
-                      { emoji:"🏥", label:"Hospital",      dist:"1.2 km", time:"5 min drive" },
-                      { emoji:"🏫", label:"Top Schools",   dist:"0.5 km", time:"6 min walk" },
-                      { emoji:"🛒", label:"Supermarket",   dist:"0.3 km", time:"4 min walk" },
-                      { emoji:"✈️", label:"Airport",        dist:"18 km",  time:"30 min drive" },
-                      { emoji:"🌳", label:"City Park",     dist:"0.6 km", time:"8 min walk" },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background:"#f5f5f7" }}>
-                        <span style={{ fontSize:"1.25rem", lineHeight:1 }}>{item.emoji}</span>
-                        <div>
-                          <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"#1d1d1f" }}>{item.label}</div>
-                          <div style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.45)", marginTop:1 }}>{item.dist} · {item.time}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p style={{ fontSize:"0.75rem", color:"rgba(0,0,0,0.3)", marginTop:12 }}>* Approximate distances. Verify before finalising.</p>
-                </div>
+                {/* Zone IQ — Surroundings */}
+                <ZoneIQ location={project.location} city={project.city} />
 
                 {project.amenities.length > 0 && (
                   <AmenitiesShowcase amenities={project.amenities}/>
                 )}
+
+                {/* Gallery — named locations */}
+                <GallerySection locations={galleryLocations} projectName={project.name} />
 
                 {/* Available flat list */}
                 <div className="apple-card p-5">
