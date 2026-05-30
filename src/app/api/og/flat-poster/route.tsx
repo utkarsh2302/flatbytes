@@ -25,7 +25,6 @@ export async function GET(req: NextRequest) {
   const configs     = sp.get("configs")   ?? "2, 3 & 4 BHK";
   const areaRange   = sp.get("area")      ?? "1200 – 2800 sq.ft";
   const available   = sp.get("available") ?? "12";
-  const brokerName  = sp.get("broker")    ?? "Your Name";
   const brokerPhone = sp.get("phone")     ?? "+91 98765 43210";
   const coverUrl    = sp.get("cover")    ?? null;
   const theme       = sp.get("theme")    ?? "gold";
@@ -43,6 +42,10 @@ export async function GET(req: NextRequest) {
   const contactColor  = contact === "call" ? "#4B8BF5" : "#25D366";
   const contactBg     = contact === "call" ? "rgba(75,139,245,0.1)" : "rgba(37,211,102,0.1)";
   const contactBorder = contact === "call" ? "rgba(75,139,245,0.4)" : "rgba(37,211,102,0.4)";
+
+  // Punchy call-to-action (no broker name on poster — just the number + CTA)
+  const ctaKicker = contact === "call" ? "📞 CALL NOW" : "💬 WHATSAPP NOW";
+  const ctaLine   = "Book your site visit today";
 
   // ── LANDSCAPE (Facebook feed / WhatsApp) ──────────────────────────────
   if (isLandscape) {
@@ -110,13 +113,12 @@ export async function GET(req: NextRequest) {
             </div>
           ) : null}
 
-          {/* Broker */}
-          <div style={{ display:"flex", flexDirection:"row", alignItems:"center", gap:12, background:contactBg, border:`1.5px solid ${contactBorder}`, borderRadius:14, padding:"12px 18px" }}>
-            <div style={{ display:"flex", fontSize:20 }}>{contactIcon}</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-              <div style={{ display:"flex", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:700, letterSpacing:2 }}>{contact === "call" ? "CALL" : "WHATSAPP"}</div>
-              <div style={{ display:"flex", color:contactColor, fontSize:18, fontWeight:900 }}>{brokerPhone}</div>
-              <div style={{ display:"flex", color:"rgba(255,255,255,0.5)", fontSize:13 }}>{brokerName}</div>
+          {/* Call-to-action */}
+          <div style={{ display:"flex", flexDirection:"row", alignItems:"center", gap:12, background:contactBg, border:`1.5px solid ${contactBorder}`, borderRadius:14, padding:"14px 20px" }}>
+            <div style={{ display:"flex", fontSize:24 }}>{contactIcon}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+              <div style={{ display:"flex", color:contactColor, fontSize:12, fontWeight:800, letterSpacing:1.5 }}>{contact === "call" ? "CALL NOW — BOOK A VISIT" : "WHATSAPP NOW — BOOK A VISIT"}</div>
+              <div style={{ display:"flex", color:"#fff", fontSize:21, fontWeight:900, letterSpacing:0.5 }}>{brokerPhone}</div>
             </div>
           </div>
         </div>
@@ -167,6 +169,15 @@ export async function GET(req: NextRequest) {
           <div style={{ display:"flex", color:"#fff", fontSize:88, fontWeight:900, lineHeight:0.95, letterSpacing:-3, marginBottom:16 }}>{projectName}</div>
           {tagline && <div style={{ display:"flex", color:"rgba(255,255,255,0.6)", fontSize:30, fontStyle:"italic", marginBottom:24 }}>{tagline}</div>}
 
+          {/* Highlight badge */}
+          {badge ? (
+            <div style={{ display:"flex", marginBottom:28 }}>
+              <div style={{ display:"flex", alignItems:"center", background:t.accent, borderRadius:100, padding:"12px 30px" }}>
+                <div style={{ display:"flex", color:"#0a0a0a", fontSize:28, fontWeight:900, letterSpacing:1 }}>{badge.toUpperCase()}</div>
+              </div>
+            </div>
+          ) : null}
+
           {/* Gold divider */}
           <div style={{ display:"flex", width:100, height:4, background:t.accent, borderRadius:2, marginBottom:44 }} />
 
@@ -193,12 +204,11 @@ export async function GET(req: NextRequest) {
           {/* Divider */}
           <div style={{ display:"flex", height:1, background:"rgba(255,255,255,0.08)", marginBottom:44 }} />
 
-          {/* Broker */}
+          {/* Call-to-action */}
           <div style={{ display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", color:"rgba(255,255,255,0.4)", fontSize:16, fontWeight:700, letterSpacing:3 }}>CONTACT BROKER</div>
-              {badge ? <div style={{ display:"flex", color:t.accent, fontSize:14, fontWeight:700, marginTop:2 }}>{badge}</div> : null}
-              <div style={{ display:"flex", color:"#fff", fontSize:38, fontWeight:800 }}>{brokerName}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ display:"flex", color:contactColor, fontSize:32, fontWeight:900, letterSpacing:1 }}>{ctaKicker}</div>
+              <div style={{ display:"flex", color:"rgba(255,255,255,0.75)", fontSize:23 }}>{ctaLine}</div>
             </div>
             <div style={{ display:"flex", flexDirection:"row", alignItems:"center", gap:16, background:contactBg, border:`2px solid ${contactBorder}`, borderRadius:100, padding:"20px 36px" }}>
               <div style={{ display:"flex", fontSize:28 }}>{contactIcon}</div>
@@ -242,6 +252,13 @@ export async function GET(req: NextRequest) {
         </div>
         <div style={{ display:"flex", color:"#fff", fontSize:78, fontWeight:900, lineHeight:1, letterSpacing:-2, marginBottom:16 }}>{projectName}</div>
         {tagline && <div style={{ display:"flex", color:"rgba(255,255,255,0.6)", fontSize:26, fontStyle:"italic", marginBottom:20 }}>{tagline}</div>}
+        {badge ? (
+          <div style={{ display:"flex", marginBottom:24 }}>
+            <div style={{ display:"flex", alignItems:"center", background:t.accent, borderRadius:100, padding:"11px 28px" }}>
+              <div style={{ display:"flex", color:"#0a0a0a", fontSize:26, fontWeight:900, letterSpacing:1 }}>{badge.toUpperCase()}</div>
+            </div>
+          </div>
+        ) : null}
         <div style={{ display:"flex", width:90, height:4, background:t.accent, borderRadius:2, marginBottom:40 }} />
         <div style={{ display:"flex", flexDirection:"row", marginBottom:44 }}>
           <div style={{ display:"flex", flexDirection:"column", paddingRight:60, marginRight:60, borderRight:"1px solid rgba(255,255,255,0.12)" }}>
@@ -261,9 +278,9 @@ export async function GET(req: NextRequest) {
         </div>
         <div style={{ display:"flex", height:1, background:"rgba(255,255,255,0.08)", marginBottom:40 }} />
         <div style={{ display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <div style={{ display:"flex", color:"rgba(255,255,255,0.4)", fontSize:15, fontWeight:700, letterSpacing:3 }}>CONTACT BROKER</div>
-            <div style={{ display:"flex", color:"#fff", fontSize:34, fontWeight:800 }}>{brokerName}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <div style={{ display:"flex", color:contactColor, fontSize:30, fontWeight:900, letterSpacing:1 }}>{ctaKicker}</div>
+            <div style={{ display:"flex", color:"rgba(255,255,255,0.75)", fontSize:21 }}>{ctaLine}</div>
           </div>
           <div style={{ display:"flex", flexDirection:"row", alignItems:"center", gap:16, background:contactBg, border:`2px solid ${contactBorder}`, borderRadius:100, padding:"18px 36px" }}>
             <div style={{ display:"flex", fontSize:26 }}>{contactIcon}</div>
