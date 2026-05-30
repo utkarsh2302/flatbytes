@@ -170,7 +170,8 @@ export async function getBrokerStats(brokerId: string) {
 
 // ── Activity timeline ─────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// New tables not yet in generated types — cast to bypass type checking
+// eslint-disable-next-line
 type AnyClient = any
 
 export async function getActivitiesForLead(leadId: string): Promise<BrokerActivity[]> {
