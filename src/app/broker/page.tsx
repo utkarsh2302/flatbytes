@@ -137,9 +137,8 @@ export default async function BrokerDashboard() {
                 { label: "Download Brochure", href: "/broker/marketing", emoji: "📄" },
               ].map((a) => (
                 <Link key={a.label} href={a.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
-                  style={{ background: "#f5f5f7", textDecoration: "none" }}
-                  onMouseEnter={() => {}} onMouseLeave={() => {}}>
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-gray-200"
+                  style={{ background: "#f5f5f7", textDecoration: "none" }}>
                   <span style={{ fontSize: "1.1rem" }}>{a.emoji}</span>
                   <span style={{ fontSize: "0.82rem", fontWeight: 500, color: "#1d1d1f" }}>{a.label}</span>
                   <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "rgba(0,0,0,0.3)" }} />
